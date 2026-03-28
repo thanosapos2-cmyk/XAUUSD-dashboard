@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XAUUSD PRO ELITE v51.2 | SMC & FUNDED</title>
+<title>XAUUSD PRO ELITE v51.2 | Multi-Symbol SMC</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -22,7 +22,7 @@ body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-
 .tf-btn:hover { border-color: var(--gold); }
 .tf-active { background: var(--gold); color: black; font-weight: bold; }
 .funded-stats { background: #000; border: 1px solid var(--gold); padding: 15px; border-radius: 8px; margin-top: 20px; }
-input { background: #161b22; border: 1px solid var(--border); color: white; padding: 10px; width: 90%; margin-bottom: 10px; border-radius: 5px; }
+input { background: #161b22; border: 1px solid var(--border); color: white; padding: 10px; width: 90%; margin-bottom: 10px; border-radius: 5px; font-family: 'Share Tech Mono'; }
 button.conn-btn { background: var(--gold); color: black; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 5px; }
 </style>
 </head>
@@ -30,16 +30,26 @@ button.conn-btn { background: var(--gold); color: black; border: none; padding: 
 <div class="main-layout">
     <div class="panel">
         <div class="header-box"><span>FUNDED GUARD</span></div>
-        <input type="password" id="api-key-input" placeholder="TwelveData API Key...">
-        <button class="conn-btn" onclick="saveSettings()">CONNECT SYSTEM</button>
+        <label style="font-size: 10px; color: #666;">TWELVEDATA API KEY</label>
+        <input type="password" id="api-key-input" placeholder="Your API Key...">
+        
+        <label style="font-size: 10px; color: #666;">TRADING SYMBOL (e.g. XAU/USD)</label>
+        <input type="text" id="symbol-input" value="XAU/USD" placeholder="e.g. XAU/USD">
+        
+        <button class="conn-btn" onclick="saveSettings()">CONNECT & SYNC</button>
+        
         <div class="funded-stats">
             <div style="display:flex; justify-content:space-between"><span>Lots (0.5%):</span> <span id="res-lots" style="color:var(--green)">0.00</span></div>
             <div style="display:flex; justify-content:space-between"><span>Risk Amt:</span> <span id="res-risk" style="color:var(--red)">-$0</span></div>
         </div>
         <div id="smc-list" style="margin-top:20px"></div>
     </div>
+    
     <div class="panel" style="padding:0;">
-        <div style="position:absolute; top:20px; right:20px; z-index:10" id="live-price" class="price-tag">0000.00</div>
+        <div style="position:absolute; top:20px; right:20px; z-index:10; text-align: right;">
+            <div id="active-symbol-display" style="font-size: 12px; color: var(--gold);">SYMBOL: XAU/USD</div>
+            <div id="live-price" class="price-tag">0000.00</div>
+        </div>
         <div style="position:absolute; bottom:20px; left:20px; z-index:10; display:flex; gap:5px;">
             <button class="tf-btn tf-active" onclick="changeTF('5min', this)">M5</button>
             <button class="tf-btn" onclick="changeTF('15min', this)">M15</button>
@@ -49,6 +59,7 @@ button.conn-btn { background: var(--gold); color: black; border: none; padding: 
         </div>
         <canvas id="mainChart" style="width:100%; height:100%"></canvas>
     </div>
+    
     <div class="panel">
         <div class="header-box">MASTER ALGO</div>
         <div id="signal-card" style="text-align:center; padding:20px; background:#000; border-radius:10px; border:1px solid #333;">
@@ -60,10 +71,13 @@ button.conn-btn { background: var(--gold); color: black; border: none; padding: 
             <div id="sig-reason" style="font-size:12px; color:var(--gold)">Searching for Setup...</div>
         </div>
     </div>
-</div><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 let state = {
     key: localStorage.getItem('xau_api') || '',
+    symbol: localStorage.getItem('xau_symbol') || 'XAU/USD',
     balance: 100000,
     candles: [],
     zones: [],
@@ -73,6 +87,10 @@ let state = {
 };
 
 const alertSound = new Audio('https://actions.google.com/sounds/v1/notification/beep.ogg');
+
+// Φόρτωση αποθηκευμένων ρυθμίσεων στα inputs
+document.getElementById('api-key-input').value = state.key;
+document.getElementById('symbol-input').value = state.symbol;
 
 function analyzeSMC(data) {
     let zones = [];
@@ -107,7 +125,7 @@ function changeTF(newTF, btn) {
 
 async function getH1Trend() {
     try {
-        const r = await fetch(`https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=1h&apikey=${state.key}&outputsize=10`);
+        const r = await fetch(`https://api.twelvedata.com/time_series?symbol=${state.symbol}&interval=1h&apikey=${state.key}&outputsize=10`);
         const j = await r.json();
         const c = j.values;
         const bull = parseFloat(c[0].close) > parseFloat(c[5].close);
@@ -116,18 +134,24 @@ async function getH1Trend() {
         el.style.color = bull ? 'var(--green)' : 'var(--red)';
         return bull ? 'BULL' : 'BEAR';
     } catch(e) { return 'NEUTRAL'; }
-}async function updateLoop() {
+}
+
+async function updateLoop() {
     if (!state.key) return;
+    document.getElementById('active-symbol-display').innerText = `SYMBOL: ${state.symbol}`;
     try {
-        const res = await fetch(`https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=${state.currentTF}&apikey=${state.key}&outputsize=50`);
+        const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${state.symbol}&interval=${state.currentTF}&apikey=${state.key}&outputsize=50`);
         const json = await res.json();
-        if (!json.values) return;
+        if (!json.values) {
+            console.error("API Error or Invalid Symbol");
+            return;
+        }
         state.candles = json.values.map(v => ({
             t: v.datetime, o: parseFloat(v.open), h: parseFloat(v.high), l: parseFloat(v.low), c: parseFloat(v.close)
         })).reverse();
 
         const last = state.candles[state.candles.length-1];
-        document.getElementById('live-price').innerText = last.c.toFixed(2);
+        document.getElementById('live-price').innerText = last.c.toFixed(3);
         state.zones = analyzeSMC(state.candles);
         const sweep = detectSweep(state.candles);
         const h1Trend = await getH1Trend();
@@ -149,7 +173,7 @@ function renderUI(sweep, price, h1Trend) {
     });
 
     if (activeSig !== 'WAIT') {
-        strength = 3; // Βάση: Zone + Sweep
+        strength = 3;
         if ((activeSig === 'BUY' && h1Trend === 'BULL') || (activeSig === 'SELL' && h1Trend === 'BEAR')) strength += 2;
         
         document.getElementById('sig-status').innerText = activeSig;
@@ -179,7 +203,9 @@ function renderUI(sweep, price, h1Trend) {
 
 function saveSettings() {
     state.key = document.getElementById('api-key-input').value;
+    state.symbol = document.getElementById('symbol-input').value;
     localStorage.setItem('xau_api', state.key);
+    localStorage.setItem('xau_symbol', state.symbol);
     updateLoop();
 }
 
@@ -198,6 +224,7 @@ function updateChart() {
     }
 }
 setInterval(updateLoop, 15000);
+if(state.key) updateLoop();
 </script>
 </body>
 </html>
