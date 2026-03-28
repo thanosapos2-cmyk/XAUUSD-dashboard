@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>XAUUSD Pro System | Live Price + Twelvedata</title>
+<title>XAUUSD Pro System | OANDA Live Price</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -25,6 +25,17 @@ body {
   color: var(--text);
   font-family: 'Rajdhani', sans-serif;
   font-size: 14px;
+  min-height: 100vh;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(rgba(245,200,66,0.025) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(245,200,66,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
 }
 .header {
   position: sticky;
@@ -75,7 +86,7 @@ body {
 @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.5; } }
 .price-display {
   font-family: 'Orbitron', monospace;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--gold);
 }
@@ -103,8 +114,9 @@ body {
 }
 .tab:hover { color: var(--gold); }
 .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
-.panel { display: none; padding: 24px 28px; }
+.panel { display: none; padding: 24px 28px; animation: fadeUp 0.3s ease; }
 .panel.active { display: block; }
+@keyframes fadeUp { from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
 .sh {
   display: flex;
   align-items: center;
@@ -134,7 +146,9 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 16px;
+  transition: all 0.2s;
 }
+.stat-card:hover { border-color: rgba(245,200,66,0.35); transform: translateY(-2px); }
 .stat-label {
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
@@ -269,6 +283,7 @@ body {
   .ind-grid { grid-template-columns: repeat(4, 1fr); }
   .stat-row { grid-template-columns: repeat(2, 1fr); }
   .signal-grid { grid-template-columns: repeat(2, 1fr); }
+  .grid2 { grid-template-columns: 1fr; }
 }
 .tv-widget-container { min-width: 180px; }
 </style>
@@ -278,11 +293,11 @@ body {
 <header class="header">
   <div>
     <div class="logo">XAU/USD PRO</div>
-    <div class="logo-sub">LIVE OANDA PRICE + TWELVEDATA CANDLES</div>
+    <div class="logo-sub">OANDA LIVE PRICE + TWELVEDATA CANDLES</div>
   </div>
   <div class="header-right">
-    <!-- TradingView Widget for accurate OANDA price -->
-    <div id="tv-widget" style="min-width: 200px;">
+    <!-- TradingView Widget - ACCURATE OANDA PRICE -->
+    <div id="tv-widget" style="min-width: 180px;">
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
         <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async defer>
@@ -328,8 +343,7 @@ body {
 
   <div class="sh"><div class="sh-title">TIMEFRAMES</div><div class="sh-line"></div></div>
   <div class="tf-row">
-    <div class="tf-btn active" data-tf="M1" onclick="setActiveTF('M1')">M1</div>
-    <div class="tf-btn" data-tf="M5" onclick="setActiveTF('M5')">M5</div>
+    <div class="tf-btn active" data-tf="M5" onclick="setActiveTF('M5')">M5</div>
     <div class="tf-btn" data-tf="M15" onclick="setActiveTF('M15')">M15</div>
     <div class="tf-btn" data-tf="M30" onclick="setActiveTF('M30')">M30</div>
     <div class="tf-btn" data-tf="H1" onclick="setActiveTF('H1')">H1</div>
@@ -417,13 +431,12 @@ body {
 
 <script>
 // ============================================================
-// TWELVEDATA CONFIGURATION
+// TWELVEDATA API FOR CANDLES
 // ============================================================
 const TD_API_KEY = 'f698ff917a974f4592722d2bc6a6f016';
 const TD_SYMBOL = 'XAU/USD';
 
 const TF_MAP = {
-  'M1': '1min',
   'M5': '5min',
   'M15': '15min',
   'M30': '30min',
@@ -431,7 +444,6 @@ const TF_MAP = {
 };
 
 let candleCache = {};
-let lastRequestTime = 0;
 let activeTF = 'M5';
 let signalTF = 'M5';
 let lastAlert = null;
@@ -440,49 +452,44 @@ let livePrice = null;
 let lastPrice = null;
 
 // ============================================================
-// READ LIVE PRICE FROM TRADINGVIEW WIDGET
+// READ LIVE PRICE FROM TRADINGVIEW WIDGET (OANDA)
 // ============================================================
 function startTVPriceReader() {
   setInterval(() => {
     try {
-      const widget = document.querySelector('.tradingview-widget-container iframe');
+      // Find the TradingView widget container
+      const widget = document.querySelector('.tradingview-widget-container__widget');
       if (!widget) return;
       
-      // Alternative: read from the container text
-      const container = document.querySelector('.tradingview-widget-container__widget');
-      if (container && container.textContent) {
-        const text = container.textContent;
-        const match = text.match(/(\d{1,3},\d{3}\.\d{2})|(\d{4}\.\d{2})/);
-        if (match) {
-          const price = parseFloat(match[0].replace(/,/g, ''));
-          if (price > 1000 && price < 20000) {
-            updateLivePrice(price);
-          }
-        }
-      }
-      
-      // Also try to find any element with price
-      const allElements = document.querySelectorAll('*');
+      // Look for the price element specifically - TradingView uses specific classes
+      const allElements = widget.querySelectorAll('*');
       for (let el of allElements) {
-        const text = el.textContent;
-        if (text && /^\d{4}\.\d{2}$/.test(text.trim())) {
-          const price = parseFloat(text);
+        const text = el.textContent || '';
+        // Match OANDA:XAUUSD price format: 4 digits, dot, 2 decimals
+        const match = text.match(/(\d{4}\.\d{2})/);
+        if (match) {
+          const price = parseFloat(match[1]);
           if (price > 1000 && price < 20000 && price !== livePrice) {
             updateLivePrice(price);
             break;
           }
         }
       }
-    } catch(e) {}
+    } catch(e) {
+      // Silent fail
+    }
   }, 1000);
 }
 
 function updateLivePrice(price) {
   if (price === livePrice) return;
   livePrice = price;
+  
+  // Update UI
   document.getElementById('live-price-val').textContent = price.toFixed(2);
   document.getElementById('header-price').textContent = price.toFixed(2);
   
+  // Calculate change
   if (lastPrice) {
     const change = price - lastPrice;
     const changeEl = document.getElementById('price-change');
@@ -491,7 +498,7 @@ function updateLivePrice(price) {
   }
   lastPrice = price;
   
-  // Update signal if needed
+  // Update signal
   updateSignals();
 }
 
@@ -504,15 +511,9 @@ async function fetchCandles(tf) {
   
   const now = Date.now();
   const cached = candleCache[tf];
-  if (cached && (now - cached.ts) < 30000) {
+  if (cached && (now - cached.ts) < 60000) {
     return cached.candles;
   }
-  
-  if (now - lastRequestTime < 8000 && lastRequestTime > 0) {
-    return cached ? cached.candles : null;
-  }
-  
-  lastRequestTime = now;
   
   try {
     const url = `https://api.twelvedata.com/time_series?symbol=${TD_SYMBOL}&interval=${interval}&outputsize=100&apikey=${TD_API_KEY}`;
@@ -650,12 +651,13 @@ function analyzeCandles(candles) {
 }
 
 // ============================================================
-// SIGNAL UPDATE (USES LIVE PRICE FROM TV)
+// SIGNAL UPDATE
 // ============================================================
 async function updateSignals() {
   const candles = await fetchCandles(signalTF);
   if (!candles || candles.length < 30) {
-    document.getElementById('mtf-verdict').innerHTML = '⚠️ Ανεπαρκή δεδομένα για ' + signalTF;
+    const mtfDiv = document.getElementById('mtf-verdict');
+    if (mtfDiv) mtfDiv.innerHTML = '⚠️ Ανεπαρκή δεδομένα για ' + signalTF;
     return;
   }
   
@@ -688,7 +690,7 @@ async function updateSignals() {
       ${analysis.direction} SIGNAL
     </div>
     <div style="margin-top:8px">RSI: ${analysis.rsi.toFixed(1)} | ADX: ${analysis.adx.toFixed(1)} | ATR: ${analysis.atr.toFixed(2)}</div>
-    <div>Score: ${analysis.score}% | ${analysis.score >= 75 ? 'HIGH CONFIDENCE' : analysis.score >= 60 ? 'MEDIUM CONFIDENCE' : 'LOW CONFIDENCE'}</div>
+    <div>Live Price: ${entry.toFixed(2)} | Score: ${analysis.score}%</div>
   `;
   
   // Update indicators grid
@@ -898,7 +900,11 @@ function setSignalTF(tf) {
 startTVPriceReader();
 setActiveTF('M5');
 setSignalTF('M5');
-setInterval(() => { if (document.visibilityState === 'visible') updateSignals(); }, 10000);
+setInterval(() => {
+  if (document.visibilityState === 'visible') {
+    updateSignals();
+  }
+}, 10000);
 setTimeout(updateSignals, 2000);
 </script>
 </body>
