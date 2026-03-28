@@ -2,67 +2,71 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <title>SMC MASTER SWITCHER v59.0</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <title>SMC BEAST v60.0 | FULL ALGO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root { --bg: #05080a; --gold: #f5c842; --green: #00ffaa; --red: #ff3355; --panel: #0d1117; --border: #1c2a3a; }
         body, html { background: var(--bg); color: #adbac7; margin: 0; padding: 0; height: 100vh; font-family: 'Rajdhani', sans-serif; overflow: hidden; }
-        .main-layout { display: grid; grid-template-columns: 280px 1fr 280px; height: 100vh; gap: 1px; background: var(--border); }
-        .sidebar { background: var(--panel); padding: 20px; display: flex; flex-direction: column; gap: 15px; border: 0.5px solid var(--border); }
+        .main-layout { display: grid; grid-template-columns: 300px 1fr 320px; height: 100vh; gap: 1px; background: var(--border); }
+        .sidebar { background: var(--panel); padding: 15px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
         .chart-container { background: #000; position: relative; }
-        input { background: #161b22; border: 1px solid #333; color: white; padding: 12px; width: 88%; border-radius: 6px; font-family: monospace; font-size: 14px; text-transform: uppercase; }
-        button { background: var(--gold); color: black; border: none; padding: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; font-family: 'Orbitron'; transition: 0.2s; }
-        button:hover { opacity: 0.8; transform: scale(1.02); }
-        .status-box { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; border: 1px solid #222; text-align: center; }
-        .signal-text { font-size: 38px; font-weight: bold; margin: 5px 0; font-family: 'Orbitron'; letter-spacing: 2px; }
-        .smc-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 13px; }
-        .pair-badge { background: #222; color: var(--gold); padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-bottom: 10px; display: inline-block; }
+        input { background: #161b22; border: 1px solid #333; color: white; padding: 10px; width: 88%; border-radius: 4px; font-family: monospace; }
+        button { background: var(--gold); color: black; border: none; padding: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-family: 'Orbitron'; font-size: 10px; }
+        .status-box { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 6px; border: 1px solid #222; }
+        .signal-text { font-size: 32px; font-weight: bold; text-align: center; font-family: 'Orbitron'; margin: 5px 0; }
+        .smc-tag { font-size: 11px; padding: 2px 6px; border-radius: 3px; font-weight: bold; text-transform: uppercase; }
+        .bullish { color: var(--green); } .bearish { color: var(--red); }
+        .info-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #1c2128; font-size: 13px; }
+        .zone-highlight { background: rgba(245,200,66,0.1); border-left: 3px solid var(--gold); padding: 5px; margin: 5px 0; font-size: 12px; }
     </style>
 </head>
 <body>
     <div class="main-layout">
         <div class="sidebar">
-            <h2 style="color:var(--gold); font-family:'Orbitron'; font-size:14px;">TERMINAL CONTROL</h2>
-            
-            <div style="background: rgba(245,200,66,0.05); padding: 15px; border-radius: 8px;">
-                <label style="font-size:10px; color: var(--gold);">ENTER BINANCE SYMBOL</label>
-                <input type="text" id="pair-input" value="PAXGUSDT" placeholder="e.g. BTCUSDT">
-                <p style="font-size:9px; opacity:0.5; margin-top:5px;">Gold: PAXGUSDT | Euro: EURUSDT</p>
-                <button onclick="changePair()" style="width:100%; margin-top:10px;">SWITCH & SYNC</button>
+            <h2 style="color:var(--gold); font-family:'Orbitron'; font-size:14px;">BEAST CONFIG</h2>
+            <input type="text" id="pair-input" value="PAXGUSDT" placeholder="SYMBOL (e.g. BTCUSDT)">
+            <button onclick="masterSync()">ACTIVATE ALL SYSTEMS</button>
+
+            <div class="status-box">
+                <div style="font-size:11px; color:var(--gold); text-align:center;">HTF TREND (1H)</div>
+                <div id="htf-trend" style="font-size:20px; text-align:center; font-weight:bold;">---</div>
             </div>
 
-            <div class="status-box" style="margin-top:20px;">
-                <div id="active-pair-display" class="pair-badge">CURRENT: PAXG/USDT</div>
-                <div style="font-size:10px; opacity: 0.5;">LIVE ENGINE PRICE</div>
-                <div id="engine-price" style="font-family:'Orbitron'; font-size:24px; color:white;">0.00</div>
-                <button onclick="manualSync()" style="background:transparent; color:var(--gold); border:1px solid var(--gold); padding:5px; font-size:10px; margin-top:10px; width:auto;">CALIBRATE PRICE</button>
+            <div class="status-box">
+                <div style="font-size:11px; opacity:0.6;">LIVE BINANCE PRICE</div>
+                <div id="live-price" style="font-size:24px; color:white; font-family:'Orbitron'; text-align:center;">0.00</div>
             </div>
-            
-            <div id="log" style="font-size:11px; color:#555;">Status: System Ready.</div>
+
+            <h3 style="font-size:12px; color:var(--gold); margin-top:10px;">SUPPLY & DEMAND ZONES</h3>
+            <div id="sd-zones">
+                <div class="zone-highlight">Scanning for zones...</div>
+            </div>
         </div>
 
-        <div class="chart-container" id="tv-wrapper">
+        <div class="chart-container">
             <div id="tradingview_widget" style="width:100%; height:100%;"></div>
         </div>
 
         <div class="sidebar">
-            <h2 style="color:var(--gold); font-family:'Orbitron'; font-size:14px; text-align:center;">SMC ANALYSIS</h2>
+            <h2 style="color:var(--gold); font-family:'Orbitron'; font-size:14px; text-align:center;">SMC ALGO ENGINE</h2>
             
             <div class="status-box">
-                <div style="font-size:10px; opacity:0.6;">ALGO SIGNAL</div>
-                <div id="signal" class="signal-text" style="color:#333;">WAIT</div>
-                <div id="signal-desc" style="font-size:11px; color:var(--gold);">Initializing Stream...</div>
+                <div id="signal" class="signal-text" style="color:#222;">STANDBY</div>
+                <div id="signal-desc" style="font-size:11px; text-align:center; color:var(--gold);">Waiting for Data...</div>
             </div>
 
-            <div style="margin-top:20px;">
-                <div class="smc-item"><span>Structure (BOS):</span> <span id="smc-struct" style="color:white;">Scanning...</span></div>
-                <div class="smc-item"><span>Trend (H1):</span> <span id="smc-trend" style="color:white;">---</span></div>
-                <div class="smc-item"><span>Liquidity:</span> <span id="smc-liq" style="color:white;">Finding...</span></div>
-                <div class="smc-item"><span>Momentum:</span> <span id="smc-mom" style="color:white;">0.00</span></div>
+            <div style="margin-top:10px;">
+                <div class="info-row"><span>Market Structure:</span> <span id="smc-struct">---</span></div>
+                <div class="info-row"><span>Orderblock (OB):</span> <span id="smc-ob" class="bullish">---</span></div>
+                <div class="info-row"><span>Fair Value Gap:</span> <span id="smc-fvg" style="color:#ffaa00;">None</span></div>
+                <div class="info-row"><span>S/R Level:</span> <span id="smc-sr">---</span></div>
+                <div class="info-row"><span>Momentum:</span> <span id="smc-mom">---</span></div>
             </div>
 
-            <div style="margin-top:auto; font-size:10px; opacity:0.3; text-align:center; letter-spacing: 1px;">
-                PRO-SYNC CORE v59.0
+            <h3 style="font-size:12px; color:var(--gold); margin-top:20px;">INSTITUTIONAL LOG</h3>
+            <div id="algo-log" style="font-size:11px; font-family:monospace; color:#666; height:100px; overflow-y:auto; background:#000; padding:5px;">
+                > System Booting...<br>
+                > Ready for Analysis.
             </div>
         </div>
     </div>
@@ -70,109 +74,123 @@
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script>
         let ws = null;
-        let priceOffset = 0;
-        let history = [];
+        let history5m = [];
+        let history1h = [];
         let currentPair = "PAXGUSDT";
 
-        // 1. Λειτουργία Αλλαγής Pair
-        function changePair() {
-            const newPair = document.getElementById('pair-input').value.toUpperCase().trim();
-            if(!newPair) return;
-            
-            currentPair = newPair;
-            document.getElementById('active-pair-display').innerText = "CURRENT: " + currentPair;
-            document.getElementById('log').innerText = "Status: Switching to " + currentPair + "...";
-            
-            // Καθαρισμός παλαιών δεδομένων
-            history = [];
-            priceOffset = 0; 
-            
-            // Επαναφόρτωση Chart & Stream
-            loadTVChart(currentPair);
+        async function masterSync() {
+            currentPair = document.getElementById('pair-input').value.toUpperCase().trim();
+            loadChart(currentPair);
+            await fetchInitialData(currentPair);
             initWebSocket(currentPair);
         }
 
-        // 2. Φόρτωση TradingView Widget
-        function loadTVChart(pair) {
-            let tvSymbol = (pair === "PAXGUSDT") ? "OANDA:XAUUSD" : "BINANCE:" + pair;
-            
+        function loadChart(pair) {
+            let symbol = pair === "PAXGUSDT" ? "OANDA:XAUUSD" : "BINANCE:" + pair;
             new TradingView.widget({
-                "width": "100%", "height": "100%",
-                "symbol": tvSymbol,
-                "interval": "5", "timezone": "Europe/Athens",
-                "theme": "dark", "style": "1", "locale": "el",
-                "container_id": "tradingview_widget"
+                "width": "100%", "height": "100%", "symbol": symbol,
+                "interval": "5", "timezone": "Europe/Athens", "theme": "dark",
+                "style": "1", "locale": "el", "container_id": "tradingview_widget"
             });
         }
 
-        // 3. Σύνδεση με Binance WebSocket
+        async function fetchInitialData(pair) {
+            const log = document.getElementById('algo-log');
+            log.innerHTML += `> Fetching MTF Data for ${pair}...<br>`;
+            
+            try {
+                // Fetch 1H for Trend
+                const res1h = await fetch(`https://api.binance.com/api/v3/klines?symbol=${pair}&interval=1h&limit=50`);
+                history1h = await res1h.json();
+                updateHTF();
+
+                // Fetch 5M for Algo
+                const res5m = await fetch(`https://api.binance.com/api/v3/klines?symbol=${pair}&interval=5m&limit=100`);
+                const data5m = await res5m.json();
+                history5m = data5m.map(d => ({ h: parseFloat(d[2]), l: parseFloat(d[3]), c: parseFloat(d[4]), o: parseFloat(d[1]) }));
+                
+                log.innerHTML += `> MTF Sync Complete.<br>`;
+            } catch (e) { log.innerHTML += `> Error Fetching Data.<br>`; }
+        }
+
+        function updateHTF() {
+            const last = parseFloat(history1h[history1h.length-1][4]);
+            const first = parseFloat(history1h[0][4]);
+            const trend = last > first ? "BULLISH" : "BEARISH";
+            const el = document.getElementById('htf-trend');
+            el.innerText = trend;
+            el.className = trend === "BULLISH" ? "bullish" : "bearish";
+        }
+
         function initWebSocket(pair) {
             if(ws) ws.close();
+            ws = new WebSocket(`wss://stream.binance.com:9443/ws/${pair.toLowerCase()}@kline_5m`);
             
-            const wsUrl = `wss://stream.binance.com:9443/ws/${pair.toLowerCase()}@kline_5m`;
-            ws = new WebSocket(wsUrl);
-
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                const candle = data.k;
-                const livePrice = parseFloat(candle.c);
-                const finalPrice = livePrice + priceOffset;
-
-                document.getElementById('engine-price').innerText = finalPrice.toFixed(pair.includes("USD") && !pair.includes("PAXG") ? 5 : 2);
+            ws.onmessage = (e) => {
+                const msg = JSON.parse(e.data);
+                const k = msg.k;
+                const price = parseFloat(k.c);
+                document.getElementById('live-price').innerText = price.toFixed(2);
                 
-                // Αν κλείσει το 5λεπτο κερί, το αποθηκεύουμε για την ανάλυση
-                if (candle.x) {
-                    history.push({ h: parseFloat(candle.h), l: parseFloat(candle.l), c: parseFloat(candle.c) });
-                    if(history.length > 40) history.shift();
+                if (k.x) {
+                    history5m.push({ h: parseFloat(k.h), l: parseFloat(k.l), c: parseFloat(k.c), o: parseFloat(k.o) });
+                    if(history5m.length > 100) history5m.shift();
                 }
-                
-                runSMCLogic(finalPrice);
-            };
-
-            ws.onerror = () => {
-                document.getElementById('log').innerText = "Error: Invalid Symbol or Connection Lost.";
+                runBeastAlgo(price);
             };
         }
 
-        // 4. Χειροκίνητος Συγχρονισμός (Calibration)
-        function manualSync() {
-            const tvPrice = prompt("Πληκτρολόγησε την τιμή που βλέπεις στο Chart:");
-            if(!tvPrice) return;
-            
-            const rawPrice = parseFloat(document.getElementById('engine-price').innerText) - priceOffset;
-            priceOffset = parseFloat(tvPrice) - rawPrice;
-            document.getElementById('log').innerText = "Status: Calibrated with Offset " + priceOffset.toFixed(2);
-        }
+        function runBeastAlgo(price) {
+            if(history5m.length < 20) return;
 
-        // 5. SMC Αλγόριθμος
-        function runSMCLogic(price) {
-            if(history.length < 5) return;
+            const last = history5m[history5m.length-1];
+            const prev = history5m[history5m.length-2];
+            const prev2 = history5m[history5m.length-3];
 
-            const high = Math.max(...history.slice(-10).map(c => c.h));
-            const low = Math.min(...history.slice(-10).map(c => c.l));
-
-            let sig = "WAIT";
-            let struct = "Internal";
-            let col = "#333";
-
-            if(price > high) {
-                sig = "BUY"; struct = "BOS BULLISH"; col = "var(--green)";
-            } else if(price < low) {
-                sig = "SELL"; struct = "BOS BEARISH"; col = "var(--red)";
-            }
-
-            document.getElementById('signal').innerText = sig;
-            document.getElementById('signal').style.color = col;
+            // 1. BOS & Structure
+            const highZone = Math.max(...history5m.slice(-15, -1).map(c => c.h));
+            const lowZone = Math.min(...history5m.slice(-15, -1).map(c => c.l));
+            let struct = "Sideways";
+            if(price > highZone) struct = "BOS BULLISH";
+            if(price < lowZone) struct = "BOS BEARISH";
             document.getElementById('smc-struct').innerText = struct;
-            document.getElementById('smc-trend').innerText = price > history[0].c ? "Bullish" : "Bearish";
-            document.getElementById('smc-mom').innerText = (price - history[history.length-1].c).toFixed(4);
+
+            // 2. FVG Detection
+            let fvg = "None";
+            if(history5m[history5m.length-3].h < history5m[history5m.length-1].l) fvg = "Bullish FVG";
+            if(history5m[history5m.length-3].l > history5m[history5m.length-1].h) fvg = "Bearish FVG";
+            document.getElementById('smc-fvg').innerText = fvg;
+
+            // 3. Orderblock Detection (Simple)
+            let ob = "Searching...";
+            if(struct.includes("BULLISH")) ob = "Last Sell Candle: " + lowZone.toFixed(2);
+            if(struct.includes("BEARISH")) ob = "Last Buy Candle: " + highZone.toFixed(2);
+            document.getElementById('smc-ob').innerText = ob;
+
+            // 4. Supply & Demand
+            const sdContainer = document.getElementById('sd-zones');
+            sdContainer.innerHTML = `
+                <div class="zone-highlight">Supply: ${highZone.toFixed(2)}</div>
+                <div class="zone-highlight" style="border-left-color: var(--green)">Demand: ${lowZone.toFixed(2)}</div>
+            `;
+
+            // 5. Final Signal Logic
+            const signalBox = document.getElementById('signal');
+            const htf = document.getElementById('htf-trend').innerText;
+            
+            if(struct === "BOS BULLISH" && htf === "BULLISH") {
+                signalBox.innerText = "BUY"; signalBox.style.color = "var(--green)";
+                document.getElementById('signal-desc').innerText = "Full MTF Alignment - Look for OB entry";
+            } else if(struct === "BOS BEARISH" && htf === "BEARISH") {
+                signalBox.innerText = "SELL"; signalBox.style.color = "var(--red)";
+                document.getElementById('signal-desc').innerText = "Full MTF Alignment - Look for OB entry";
+            } else {
+                signalBox.innerText = "WAIT"; signalBox.style.color = "#333";
+                document.getElementById('signal-desc').innerText = "No MTF Sync / Consolidation";
+            }
         }
 
-        // Initial Load
-        window.onload = () => {
-            loadTVChart("PAXGUSDT");
-            initWebSocket("PAXGUSDT");
-        };
+        window.onload = () => { loadChart("PAXGUSDT"); };
     </script>
 </body>
 </html>
