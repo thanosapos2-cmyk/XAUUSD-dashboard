@@ -2,95 +2,137 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <title>XAUUSD FIX v51.4</title>
+    <title>XAUUSD FINAL FIX v51.5</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --bg: #050709; --panel: #0b1018; --gold: #f5c842; --green: #00e5a0; --red: #ff4060; --text: #c8d1d9; }
-        body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; overflow: hidden; }
+        body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
         .main-layout { display: grid; grid-template-columns: 320px 1fr 300px; height: 100vh; }
-        .panel { background: var(--panel); padding: 20px; border: 0.5px solid #1c2a3a; }
-        input { background: #161b22; border: 1px solid #1c2a3a; color: white; padding: 12px; width: 85%; margin-bottom: 10px; border-radius: 4px; }
-        button { background: var(--gold); color: black; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .panel { background: var(--panel); padding: 20px; border: 0.5px solid #1c2a3a; overflow-y: auto; }
+        input { background: #161b22; border: 1px solid #1c2a3a; color: white; padding: 12px; width: 85%; margin-bottom: 10px; border-radius: 4px; font-family: monospace; }
+        button { background: var(--gold); color: black; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; }
         .price-tag { font-family: 'Orbitron', sans-serif; font-size: 32px; color: var(--gold); }
-        canvas { width: 100% !important; height: 100% !important; }
+        #log-msg { font-size: 12px; padding: 10px; margin-top: 10px; border-radius: 4px; background: rgba(0,0,0,0.3); min-height: 20px; }
     </style>
 </head>
 <body>
     <div class="main-layout">
         <div class="panel">
-            <h2 style="color:var(--gold)">SETTING</h2>
+            <h2 style="color:var(--gold); border-bottom: 1px solid #333;">CONNECTION</h2>
             <label>API KEY</label>
-            <input type="text" id="api-key" placeholder="Paste Key here...">
+            <input type="text" id="api-key" placeholder="TwelveData Key...">
             <label>SYMBOL</label>
-            <input type="text" id="symbol" value="GC=F">
-            <button onclick="fetchData()">RUN ALGO</button>
-            <p id="error-msg" style="color:red; font-size:12px; margin-top:10px;"></p>
+            <input type="text" id="symbol" value="XAU/USD">
+            <button onclick="connect()">ACTIVATE ALGO</button>
+            <div id="log-msg" style="color: #888;">System Ready.</div>
+            
+            <div id="smc-zones" style="margin-top:20px;"></div>
         </div>
         
         <div class="panel" style="padding:0; position:relative; background:#000;">
             <div style="position:absolute; top:20px; right:20px; z-index:10; text-align:right;">
-                <div id="display-sym" style="color:var(--gold)">GC=F</div>
+                <div id="active-sym-title" style="color:var(--gold); font-size:12px;">XAU/USD</div>
                 <div id="live-price" class="price-tag">0.00</div>
             </div>
             <canvas id="mainChart"></canvas>
         </div>
 
         <div class="panel" style="text-align:center;">
-            <h2 style="color:var(--gold)">ANALYSIS</h2>
-            <div id="status" style="font-size:40px; font-weight:bold; margin-top:50px;">OFFLINE</div>
-            <div id="sub-msg" style="color:#666">Enter Key and Symbol to Start</div>
+            <h2 style="color:var(--gold); border-bottom: 1px solid #333;">SIGNALS</h2>
+            <div id="h1-trend" style="font-size:18px; margin:20px 0; font-weight:bold;">TREND: --</div>
+            <div id="stars" style="font-size:30px; color:var(--gold);">☆☆☆☆☆</div>
+            <div id="status" style="font-size:45px; font-weight:bold; margin:20px 0; color:#333;">WAIT</div>
+            <div id="signal-desc" style="font-size:13px; color:var(--gold);">Waiting for Data...</div>
         </div>
     </div>
 
     <script>
-        let myChart = null;
+        let chart = null;
+        const alertSound = new Audio('https://actions.google.com/sounds/v1/notification/beep.ogg');
 
-        async function fetchData() {
+        async function connect() {
             const key = document.getElementById('api-key').value.trim();
             const sym = document.getElementById('symbol').value.trim();
-            const err = document.getElementById('error-msg');
+            const log = document.getElementById('log-msg');
+
+            if(!key) { log.innerText = "Error: Missing API Key"; return; }
             
-            if(!key) { err.innerText = "Missing API Key"; return; }
-            err.innerText = "Connecting...";
+            log.style.color = "var(--gold)";
+            log.innerText = "Connecting to " + sym + "...";
+
+            // Encode το σύμβολο για να αποφύγουμε προβλήματα με χαρακτήρες όπως / ή =
+            const encodedSym = encodeURIComponent(sym);
+            const url = `https://api.twelvedata.com/time_series?symbol=${encodedSym}&interval=5min&apikey=${key}&outputsize=50`;
 
             try {
-                // Χρησιμοποιούμε https://api.twelvedata.com/time_series
-                const response = await fetch(`https://api.twelvedata.com/time_series?symbol=${sym}&interval=5min&apikey=${key}&outputsize=50`);
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if(data.status === "error") {
-                    err.innerText = "API Says: " + data.message;
+                    log.style.color = "var(--red)";
+                    log.innerText = "API Says: " + data.message;
                     return;
                 }
 
-                const candles = data.values.map(v => ({
-                    t: v.datetime.split(' ')[1],
-                    c: parseFloat(v.close)
-                })).reverse();
+                if(!data.values) {
+                    log.style.color = "var(--red)";
+                    log.innerText = "Invalid data received. Check symbol.";
+                    return;
+                }
 
-                document.getElementById('live-price').innerText = candles[candles.length-1].c.toFixed(2);
-                document.getElementById('display-sym').innerText = sym;
-                document.getElementById('status').innerText = "LIVE";
-                document.getElementById('status').style.color = "var(--green)";
-                err.innerText = "";
-
-                renderChart(candles);
-            } catch(e) {
-                err.innerText = "Network Error. Check console.";
+                log.style.color = "var(--green)";
+                log.innerText = "Connection Successful!";
+                
+                processData(data.values, sym);
+            } catch (e) {
+                log.style.color = "var(--red)";
+                log.innerText = "Network Error. Check connection.";
             }
         }
 
-        function renderChart(candles) {
+        function processData(values, sym) {
+            const candles = values.map(v => ({
+                t: v.datetime.split(' ')[1],
+                c: parseFloat(v.close),
+                h: parseFloat(v.high),
+                l: parseFloat(v.low)
+            })).reverse();
+
+            const last = candles[candles.length - 1];
+            document.getElementById('live-price').innerText = last.c.toFixed(2);
+            document.getElementById('active-sym-title').innerText = sym;
+            
+            updateChart(candles);
+            // Εδώ θα έρθει η SMC ανάλυση μόλις δουλέψει το γράφημα
+            document.getElementById('status').innerText = "LIVE";
+            document.getElementById('status').style.color = "var(--green)";
+            document.getElementById('signal-desc').innerText = "Market Analysis Active";
+        }
+
+        function updateChart(candles) {
             const ctx = document.getElementById('mainChart').getContext('2d');
-            if(myChart) myChart.destroy();
-            myChart = new Chart(ctx, {
+            if(chart) chart.destroy();
+            chart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: candles.map(c => c.t),
-                    datasets: [{ data: candles.map(c => c.c), borderColor: '#f5c842', pointRadius: 0, borderWidth: 2 }]
+                    datasets: [{ 
+                        data: candles.map(c => c.c), 
+                        borderColor: '#f5c842', 
+                        borderWidth: 2, 
+                        pointRadius: 0,
+                        tension: 0.1 
+                    }]
                 },
-                options: { maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: '#1c2a3a' } } } }
+                options: { 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        x: { display: false }, 
+                        y: { grid: { color: '#1c2a3a' }, ticks: { color: '#666' } } 
+                    }
+                }
             });
         }
     </script>
