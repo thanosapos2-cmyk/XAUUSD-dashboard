@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAUUSD PRO ELITE v51.1 | SMC & FUNDED</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050709; --surface: #090d12; --panel: #0b1018; --border: #1c2a3a;
+  --gold: #f5c842; --green: #00e5a0; --red: #ff4060; --text: #c8d1d9;
+}
+body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; overflow: hidden; }
+.main-layout { display: grid; grid-template-columns: 350px 1fr 300px; height: 100vh; gap: 1px; background: var(--border); }
+.panel { background: var(--panel); padding: 15px; overflow-y: auto; border: 1px solid var(--border); }
+.header-box { border-bottom: 2px solid var(--gold); padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+.price-tag { font-family: 'Orbitron', sans-serif; font-size: 24px; color: var(--gold); text-shadow: 0 0 10px var(--gold); }
+.smc-tag { padding: 5px; margin: 5px 0; border-radius: 4px; font-family: 'Share Tech Mono'; font-size: 12px; }
+.supply { background: rgba(255, 64, 96, 0.1); border-left: 4px solid var(--red); color: var(--red); }
+.demand { background: rgba(0, 229, 160, 0.1); border-left: 4px solid var(--green); color: var(--green); }
+.funded-stats { background: #000; border: 1px solid var(--gold); padding: 15px; border-radius: 8px; margin-top: 20px; }
+input { background: #161b22; border: 1px solid var(--border); color: white; padding: 10px; width: 90%; margin-bottom: 10px; border-radius: 5px; }
+button { background: var(--gold); color: black; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="main-layout">
+    <div class="panel">
+        <div class="header-box"><span>FUNDED GUARD</span><span id="mtf-h1" style="font-size:12px">H1: --</span></div>
+        <input type="password" id="api-key-input" placeholder="TwelveData API Key...">
+        <button onclick="saveSettings()">CONNECT SYSTEM</button>
+        <div class="funded-stats">
+            <div style="display:flex; justify-content:space-between"><span>Lots:</span> <span id="res-lots" style="color:var(--green)">0.00</span></div>
+            <div style="display:flex; justify-content:space-between"><span>Risk:</span> <span id="res-risk" style="color:var(--red)">-$500</span></div>
+        </div>
+        <div id="smc-list" style="margin-top:20px"></div>
+    </div>
+    <div class="panel" style="padding:0; position:relative;">
+        <div style="position:absolute; top:20px; right:20px; z-index:10" id="live-price" class="price-tag">0000.00</div>
+        <canvas id="mainChart" style="width:100%; height:100%"></canvas>
+    </div>
+    <div class="panel">
+        <div class="header-box">MASTER ALGO</div>
+        <div id="signal-card" style="text-align:center; padding:20px; background:#000; border-radius:10px; border:1px solid #333;">
+            <div style="font-size:12px; color:#666">CURRENT STATUS</div>
+            <div id="sig-status" style="font-size:28px; font-weight:bold; margin:10px 0;">SCANNING...</div>
+            <div id="sig-reason" style="font-size:12px; color:var(--gold)">Waiting for Liquidity Sweep</div>
+        </div>
+    </div>
+</div><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let state = {
+    key: localStorage.getItem('xau_api') || '',
+    balance: 100000,
+    candles: [],
+    zones: [],
+    chart: null
+};
+
+// SMC ENGINE: Εντοπισμός Order Blocks & FVG
+function analyzeSMC(data) {
+    let zones = [];
+    for (let i = 2; i < data.length - 1; i++) {
+        const c1 = data[i-1], c2 = data[i], c3 = data[i+1];
+        // Bullish FVG
+        if (c3.l > c1.h && (c3.c - c3.o) > (c2.h - c2.l)) {
+            zones.push({ type: 'DEMAND', top: c1.h, bottom: c2.l });
+        }
+        // Bearish FVG
+        if (c3.h < c1.l && (c1.l - c3.h) > (c2.h - c2.l)) {
+            zones.push({ type: 'SUPPLY', top: c2.h, bottom: c1.l });
+        }
+    }
+    return zones.slice(-4);
+}
+
+// LIQUIDITY SWEEP: Ανίχνευση Stop Hunt
+function detectSweep(data) {
+    const last = data[data.length-1];
+    const prev = data.slice(-15, -1);
+    const minL = Math.min(...prev.map(c => c.l));
+    const maxH = Math.max(...prev.map(c => c.h));
+    
+    if (last.l < minL && last.c > minL) return 'BULL_SWEEP';
+    if (last.h > maxH && last.c < maxH) return 'BEAR_SWEEP';
+    return null;
+}
+
+// RISK CALC: 0.5% Rule για Funded
+function calcFunded(price, sl) {
+    const riskAmt = state.balance * 0.005;
+    const dist = Math.abs(price - sl);
+    const lots = riskAmt / (dist * 100);
+    return { lots: lots.toFixed(2), cash: riskAmt };
+}async function updateLoop() {
+    if (!state.key) return;
+    try {
+        const res = await fetch(`https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=5min&apikey=${state.key}&outputsize=50`);
+        const json = await res.json();
+        if (!json.values) return;
+
+        state.candles = json.values.map(v => ({
+            t: v.datetime, o: parseFloat(v.open), h: parseFloat(v.high), l: parseFloat(v.low), c: parseFloat(v.close)
+        })).reverse();
+
+        const last = state.candles[state.candles.length-1];
+        document.getElementById('live-price').innerText = last.c.toFixed(2);
+
+        state.zones = analyzeSMC(state.candles);
+        const sweep = detectSweep(state.candles);
+        renderUI(sweep, last.c);
+        updateChart();
+    } catch(e) { console.log(e); }
+}
+
+function renderUI(sweep, price) {
+    const list = document.getElementById('smc-list');
+    list.innerHTML = state.zones.map(z => `<div class="smc-tag ${z.type.toLowerCase()}">${z.type}: ${z.bottom.toFixed(2)}</div>`).join('');
+    
+    const sigStatus = document.getElementById('sig-status');
+    const sigReason = document.getElementById('sig-reason');
+    
+    let activeSig = null;
+    state.zones.forEach(z => {
+        if (sweep === 'BULL_SWEEP' && z.type === 'DEMAND' && price <= z.top) activeSig = 'BUY';
+        if (sweep === 'BEAR_SWEEP' && z.type === 'SUPPLY' && price >= z.bottom) activeSig = 'SELL';
+    });
+
+    if (activeSig) {
+        const r = calcFunded(price, activeSig === 'BUY' ? price - 2 : price + 2);
+        sigStatus.innerText = activeSig;
+        sigStatus.style.color = activeSig === 'BUY' ? 'var(--green)' : 'var(--red)';
+        document.getElementById('res-lots').innerText = r.lots;
+        sigReason.innerText = "SMC CONFIRMED: ENTRY LOADED";
+    }
+}
+
+function saveSettings() {
+    state.key = document.getElementById('api-key-input').value;
+    localStorage.setItem('xau_api', state.key);
+    updateLoop();
+}
+
+function updateChart() {
+    if (!state.chart) {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        state.chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: state.candles.map(c=>c.t), datasets: [{ data: state.candles.map(c=>c.c), borderColor: '#f5c842', borderWidth: 2, pointRadius:0 }] },
+            options: { maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: '#1c2a3a' } } } }
+        });
+    } else {
+        state.chart.data.labels = state.candles.map(c=>c.t);
+        state.chart.data.datasets[0].data = state.candles.map(c=>c.c);
+        state.chart.update('none');
+    }
+}
+
+setInterval(updateLoop, 10000);
+</script>
+</body>
+</html>
