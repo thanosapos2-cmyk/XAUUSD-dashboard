@@ -2,7 +2,7 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <title>SMC ELITE v51.8 | BROKER SYNC</title>
+    <title>SMC MULTI-TERMINAL v51.9</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -11,10 +11,9 @@
         .main-layout { display: grid; grid-template-columns: 320px 1fr 300px; height: 100vh; gap: 1px; background: var(--border); }
         .panel { background: var(--panel); padding: 15px; border: 0.5px solid var(--border); overflow-y: auto; }
         input, select { background: #161b22; border: 1px solid var(--border); color: white; padding: 10px; width: 85%; margin-bottom: 8px; border-radius: 4px; }
-        button { background: var(--gold); color: black; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; }
+        button { background: var(--gold); color: black; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; margin: 5px 0; }
+        .pair-btn { background: #1c2a3a; color: var(--gold); border: 1px solid var(--gold); padding: 5px; width: 30%; font-size: 10px; margin: 2px; }
         .price-tag { font-family: 'Orbitron', sans-serif; font-size: 32px; color: var(--gold); }
-        .sync-active { background: var(--green) !important; color: black !important; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -23,23 +22,27 @@
             <h3 style="color:var(--gold)">STATION CONFIG</h3>
             <input type="password" id="api-key" placeholder="TwelveData Key">
             
-            <label style="font-size: 11px;">CHOOSE BROKER (Same as TV)</label>
+            <label style="font-size: 11px;">QUICK SELECT</label>
+            <div style="display: flex; flex-wrap: wrap; margin-bottom: 10px;">
+                <button class="pair-btn" onclick="setPair('XAU/USD')">XAU/USD</button>
+                <button class="pair-btn" onclick="setPair('EUR/USD')">EUR/USD</button>
+                <button class="pair-btn" onclick="setPair('GBP/USD')">GBP/USD</button>
+            </div>
+
+            <label style="font-size: 11px;">BROKER</label>
             <select id="broker-select">
-                <option value="">Default (TwelveData)</option>
-                <option value="OANDA:">OANDA (Recommended)</option>
+                <option value="OANDA:">OANDA</option>
                 <option value="FXCM:">FXCM</option>
-                <option value="FOREX.COM:">FOREX.COM</option>
-                <option value="SAXO:">SAXO</option>
+                <option value="">Default</option>
             </select>
             
             <input type="text" id="symbol" value="XAU/USD">
-            <button onclick="updateLoop()" id="connect-btn">CONNECT</button>
+            <button onclick="updateLoop()" style="background:var(--green)">CONNECT & SYNC</button>
             
-            <div style="margin-top:20px; padding:10px; border:1px solid #333; border-radius:5px;">
-                <p style="font-size:10px; color:var(--gold)">QUICK SYNC OFFSET</p>
-                <button onclick="quickOffset(1)" style="width:45%; font-size:10px; background:#333; color:white;">+0.10</button>
-                <button onclick="quickOffset(-1)" style="width:45%; font-size:10px; background:#333; color:white;">-0.10</button>
-                <p id="current-offset" style="font-size:9px; margin-top:5px;">Current Offset: 0.00</p>
+            <div style="margin-top:20px; padding:10px; border:1px solid #333;">
+                <p style="font-size:10px; color:var(--gold)">FINE TUNE (SYNC TO TV)</p>
+                <button onclick="quickOffset(1)" style="width:45%; background:#222; color:white;">+ Pips</button>
+                <button onclick="quickOffset(-1)" style="width:45%; background:#222; color:white;">- Pips</button>
             </div>
         </div>
         
@@ -52,10 +55,10 @@
         </div>
 
         <div class="panel" style="text-align:center;">
-            <h3 style="color:var(--gold)">ALGO STATS</h3>
+            <h3 style="color:var(--gold)">ANALYSIS</h3>
             <div id="h1-trend" style="font-size:18px; margin-top:20px;">---</div>
             <div id="status" style="font-size:45px; font-weight:bold; margin:20px 0;">WAIT</div>
-            <div id="msg" style="font-size:12px; color:var(--gold);">Ready to Scan...</div>
+            <div id="msg" style="font-size:12px; color:var(--gold);">Ready...</div>
         </div>
     </div>
 
@@ -65,47 +68,36 @@
 
         document.getElementById('api-key').value = localStorage.getItem('xau_key') || '';
 
+        function setPair(p) {
+            document.getElementById('symbol').value = p;
+            updateLoop();
+        }
+
         async function updateLoop() {
             const key = document.getElementById('api-key').value.trim();
             const broker = document.getElementById('broker-select').value;
             const pair = document.getElementById('symbol').value.trim();
-            const fullSym = broker + pair;
-
             if(!key) return;
             localStorage.setItem('xau_key', key);
-            document.getElementById('connect-btn').classList.add('sync-active');
 
             try {
-                const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(fullSym)}&interval=${state.tf}&apikey=${key}&outputsize=50`;
+                const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(broker + pair)}&interval=${state.tf}&apikey=${key}&outputsize=50`;
                 const res = await fetch(url);
                 const data = await res.json();
+                if(data.status === "error") return;
 
-                if(data.status === "error") {
-                    // Αν ο broker δεν υποστηρίζει το pair, δοκίμασε χωρίς broker prefix
-                    if(broker !== "") { 
-                        document.getElementById('broker-select').value = ""; 
-                        updateLoop(); 
-                    }
-                    return;
-                }
-
-                state.decimals = pair.includes("USD") && !pair.includes("XAU") ? 5 : 2;
-                const candles = data.values.map(v => ({
-                    t: v.datetime.split(' ')[1],
-                    c: parseFloat(v.close) + state.offset
-                })).reverse();
+                state.decimals = (pair.includes("USD") && !pair.includes("XAU")) ? 5 : 2;
+                const candles = data.values.map(v => ({ t: v.datetime.split(' ')[1], c: parseFloat(v.close) + state.offset })).reverse();
 
                 document.getElementById('live-price').innerText = candles[candles.length-1].c.toFixed(state.decimals);
-                document.getElementById('disp-sym').innerText = fullSym;
+                document.getElementById('disp-sym').innerText = broker + pair;
                 renderChart(candles);
             } catch(e) { console.error(e); }
         }
 
-        function quickOffset(val) {
-            // Αυξάνει ή μειώνει το offset κατά 0.10 (για χρυσό) ή 0.00010 (για Forex)
+        function quickOffset(direction) {
             const step = state.decimals === 5 ? 0.00010 : 0.10;
-            state.offset += (val * step);
-            document.getElementById('current-offset').innerText = "Current Offset: " + state.offset.toFixed(state.decimals);
+            state.offset += (direction * step);
             updateLoop();
         }
 
@@ -118,7 +110,7 @@
                 options: { maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{grid:{color:'#1c2a3a'}}} }
             });
         }
-        setInterval(updateLoop, 15000);
+        setInterval(updateLoop, 20000);
     </script>
 </body>
 </html>
