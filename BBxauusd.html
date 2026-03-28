@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAUUSD PRO ELITE v51.2 | SMC & FUNDED</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050709; --surface: #090d12; --panel: #0b1018; --border: #1c2a3a;
+  --gold: #f5c842; --green: #00e5a0; --red: #ff4060; --text: #c8d1d9;
+}
+body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; overflow: hidden; }
+.main-layout { display: grid; grid-template-columns: 350px 1fr 300px; height: 100vh; gap: 1px; background: var(--border); }
+.panel { background: var(--panel); padding: 15px; overflow-y: auto; border: 1px solid var(--border); position: relative; }
+.header-box { border-bottom: 2px solid var(--gold); padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+.price-tag { font-family: 'Orbitron', sans-serif; font-size: 24px; color: var(--gold); text-shadow: 0 0 10px var(--gold); }
+.smc-tag { padding: 5px; margin: 5px 0; border-radius: 4px; font-family: 'Share Tech Mono'; font-size: 12px; }
+.supply { background: rgba(255, 64, 96, 0.1); border-left: 4px solid var(--red); color: var(--red); }
+.demand { background: rgba(0, 229, 160, 0.1); border-left: 4px solid var(--green); color: var(--green); }
+.tf-btn { background: #161b22; color: white; border: 1px solid var(--border); padding: 5px 10px; cursor: pointer; font-size: 11px; border-radius: 3px; }
+.tf-btn:hover { border-color: var(--gold); }
+.tf-active { background: var(--gold); color: black; font-weight: bold; }
+.funded-stats { background: #000; border: 1px solid var(--gold); padding: 15px; border-radius: 8px; margin-top: 20px; }
+input { background: #161b22; border: 1px solid var(--border); color: white; padding: 10px; width: 90%; margin-bottom: 10px; border-radius: 5px; }
+button.conn-btn { background: var(--gold); color: black; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="main-layout">
+    <div class="panel">
+        <div class="header-box"><span>FUNDED GUARD</span></div>
+        <input type="password" id="api-key-input" placeholder="TwelveData API Key...">
+        <button class="conn-btn" onclick="saveSettings()">CONNECT SYSTEM</button>
+        <div class="funded-stats">
+            <div style="display:flex; justify-content:space-between"><span>Lots (0.5%):</span> <span id="res-lots" style="color:var(--green)">0.00</span></div>
+            <div style="display:flex; justify-content:space-between"><span>Risk Amt:</span> <span id="res-risk" style="color:var(--red)">-$0</span></div>
+        </div>
+        <div id="smc-list" style="margin-top:20px"></div>
+    </div>
+    <div class="panel" style="padding:0;">
+        <div style="position:absolute; top:20px; right:20px; z-index:10" id="live-price" class="price-tag">0000.00</div>
+        <div style="position:absolute; bottom:20px; left:20px; z-index:10; display:flex; gap:5px;">
+            <button class="tf-btn tf-active" onclick="changeTF('5min', this)">M5</button>
+            <button class="tf-btn" onclick="changeTF('15min', this)">M15</button>
+            <button class="tf-btn" onclick="changeTF('30min', this)">M30</button>
+            <button class="tf-btn" onclick="changeTF('1h', this)">H1</button>
+            <button class="tf-btn" onclick="changeTF('4h', this)">H4</button>
+        </div>
+        <canvas id="mainChart" style="width:100%; height:100%"></canvas>
+    </div>
+    <div class="panel">
+        <div class="header-box">MASTER ALGO</div>
+        <div id="signal-card" style="text-align:center; padding:20px; background:#000; border-radius:10px; border:1px solid #333;">
+            <div style="font-size:11px; color:#666; margin-bottom:5px;">HTF TREND (H1)</div>
+            <div id="h1-trend-display" style="font-weight:bold; font-size:16px; margin-bottom:15px;">SCANNING...</div>
+            <div style="font-size:11px; color:#666;">SIGNAL STRENGTH</div>
+            <div id="strength-stars" style="color:var(--gold); font-size:24px; margin:5px 0;">☆☆☆☆☆</div>
+            <div id="sig-status" style="font-size:32px; font-weight:bold; margin:10px 0;">WAITING</div>
+            <div id="sig-reason" style="font-size:12px; color:var(--gold)">Searching for Setup...</div>
+        </div>
+    </div>
+</div><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let state = {
+    key: localStorage.getItem('xau_api') || '',
+    balance: 100000,
+    candles: [],
+    zones: [],
+    chart: null,
+    currentTF: '5min',
+    lastSignal: 'WAIT'
+};
+
+const alertSound = new Audio('https://actions.google.com/sounds/v1/notification/beep.ogg');
+
+function analyzeSMC(data) {
+    let zones = [];
+    for (let i = 2; i < data.length - 1; i++) {
+        const c1 = data[i-1], c2 = data[i], c3 = data[i+1];
+        if (c3.l > c1.h && (c3.c - c3.o) > (c2.h - c2.l)) {
+            zones.push({ type: 'DEMAND', top: c1.h, bottom: c2.l });
+        }
+        if (c3.h < c1.l && (c1.l - c3.h) > (c2.h - c2.l)) {
+            zones.push({ type: 'SUPPLY', top: c2.h, bottom: c1.l });
+        }
+    }
+    return zones.slice(-5);
+}
+
+function detectSweep(data) {
+    const last = data[data.length-1];
+    const prev = data.slice(-20, -1);
+    const minL = Math.min(...prev.map(c => c.l));
+    const maxH = Math.max(...prev.map(c => c.h));
+    if (last.l < minL && last.c > minL) return 'BULL_SWEEP';
+    if (last.h > maxH && last.c < maxH) return 'BEAR_SWEEP';
+    return null;
+}
+
+function changeTF(newTF, btn) {
+    state.currentTF = newTF;
+    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('tf-active'));
+    btn.classList.add('tf-active');
+    updateLoop();
+}
+
+async function getH1Trend() {
+    try {
+        const r = await fetch(`https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=1h&apikey=${state.key}&outputsize=10`);
+        const j = await r.json();
+        const c = j.values;
+        const bull = parseFloat(c[0].close) > parseFloat(c[5].close);
+        const el = document.getElementById('h1-trend-display');
+        el.innerText = bull ? '▲ BULLISH' : '▼ BEARISH';
+        el.style.color = bull ? 'var(--green)' : 'var(--red)';
+        return bull ? 'BULL' : 'BEAR';
+    } catch(e) { return 'NEUTRAL'; }
+}async function updateLoop() {
+    if (!state.key) return;
+    try {
+        const res = await fetch(`https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=${state.currentTF}&apikey=${state.key}&outputsize=50`);
+        const json = await res.json();
+        if (!json.values) return;
+        state.candles = json.values.map(v => ({
+            t: v.datetime, o: parseFloat(v.open), h: parseFloat(v.high), l: parseFloat(v.low), c: parseFloat(v.close)
+        })).reverse();
+
+        const last = state.candles[state.candles.length-1];
+        document.getElementById('live-price').innerText = last.c.toFixed(2);
+        state.zones = analyzeSMC(state.candles);
+        const sweep = detectSweep(state.candles);
+        const h1Trend = await getH1Trend();
+        renderUI(sweep, last.c, h1Trend);
+        updateChart();
+    } catch(e) { console.log(e); }
+}
+
+function renderUI(sweep, price, h1Trend) {
+    const list = document.getElementById('smc-list');
+    list.innerHTML = state.zones.map(z => `<div class="smc-tag ${z.type.toLowerCase()}">${z.type}: ${z.bottom.toFixed(2)}</div>`).join('');
+    
+    let activeSig = 'WAIT';
+    let strength = 0;
+    
+    state.zones.forEach(z => {
+        if (sweep === 'BULL_SWEEP' && price <= z.top && z.type === 'DEMAND') activeSig = 'BUY';
+        if (sweep === 'BEAR_SWEEP' && price >= z.bottom && z.type === 'SUPPLY') activeSig = 'SELL';
+    });
+
+    if (activeSig !== 'WAIT') {
+        strength = 3; // Βάση: Zone + Sweep
+        if ((activeSig === 'BUY' && h1Trend === 'BULL') || (activeSig === 'SELL' && h1Trend === 'BEAR')) strength += 2;
+        
+        document.getElementById('sig-status').innerText = activeSig;
+        document.getElementById('sig-status').style.color = activeSig === 'BUY' ? 'var(--green)' : 'var(--red)';
+        document.getElementById('sig-reason').innerText = "SMC SETUP DETECTED";
+        
+        const riskAmt = state.balance * 0.005;
+        const lots = (riskAmt / (2.5 * 100)).toFixed(2);
+        document.getElementById('res-lots').innerText = lots;
+        document.getElementById('res-risk').innerText = `-$${riskAmt}`;
+
+        if (state.lastSignal !== activeSig) {
+            alertSound.play();
+            state.lastSignal = activeSig;
+        }
+    } else {
+        document.getElementById('sig-status').innerText = 'WAITING';
+        document.getElementById('sig-status').style.color = '#666';
+        document.getElementById('sig-reason').innerText = "Scanning Liquidity...";
+        state.lastSignal = 'WAIT';
+    }
+    
+    let stars = '';
+    for(let i=0; i<5; i++) stars += (i < strength) ? '★' : '☆';
+    document.getElementById('strength-stars').innerText = stars;
+}
+
+function saveSettings() {
+    state.key = document.getElementById('api-key-input').value;
+    localStorage.setItem('xau_api', state.key);
+    updateLoop();
+}
+
+function updateChart() {
+    if (!state.chart) {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        state.chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: state.candles.map(c=>c.t), datasets: [{ data: state.candles.map(c=>c.c), borderColor: '#f5c842', borderWidth: 2, pointRadius:0 }] },
+            options: { maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: '#1c2a3a' } } } }
+        });
+    } else {
+        state.chart.data.labels = state.candles.map(c=>c.t);
+        state.chart.data.datasets[0].data = state.candles.map(c=>c.c);
+        state.chart.update('none');
+    }
+}
+setInterval(updateLoop, 15000);
+</script>
+</body>
+</html>
