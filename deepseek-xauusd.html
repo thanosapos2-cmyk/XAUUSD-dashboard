@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>XAUUSD Pro System v51 | Twelvedata Edition</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<title>XAUUSD Pro System | Twelvedata Live Candles</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -13,7 +12,6 @@
   --panel: #0b1018;
   --border: #1c2a3a;
   --gold: #f5c842;
-  --gold2: #e8a020;
   --green: #00e5a0;
   --red: #ff4060;
   --blue: #3de0ff;
@@ -27,17 +25,6 @@ body {
   color: var(--text);
   font-family: 'Rajdhani', sans-serif;
   font-size: 14px;
-  min-height: 100vh;
-}
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image: linear-gradient(rgba(245,200,66,0.025) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(245,200,66,0.025) 1px, transparent 1px);
-  background-size: 48px 48px;
-  pointer-events: none;
-  z-index: 0;
 }
 .header {
   position: sticky;
@@ -57,7 +44,7 @@ body::before {
   font-size: 20px;
   font-weight: 900;
   letter-spacing: 4px;
-  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  background: linear-gradient(135deg, var(--gold), #e8a020);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -65,7 +52,6 @@ body::before {
   font-family: 'Share Tech Mono', monospace;
   font-size: 10px;
   color: var(--muted2);
-  letter-spacing: 3px;
 }
 .header-right { display: flex; align-items: center; gap: 20px; }
 .live-badge {
@@ -76,7 +62,6 @@ body::before {
   border: 1px solid rgba(0,229,160,0.3);
   border-radius: 3px;
   padding: 4px 10px;
-  font-family: 'Share Tech Mono', monospace;
   font-size: 10px;
   color: var(--green);
 }
@@ -87,10 +72,7 @@ body::before {
   background: var(--green);
   animation: pulse 1.8s infinite;
 }
-@keyframes pulse {
-  0%,100%{ opacity:1; box-shadow:0 0 0 0 rgba(0,229,160,0.5); }
-  50%{ opacity:0.5; box-shadow:0 0 0 5px rgba(0,229,160,0); }
-}
+@keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.5; } }
 .price-display {
   font-family: 'Orbitron', monospace;
   font-size: 18px;
@@ -110,16 +92,14 @@ body::before {
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 2px;
-  text-transform: uppercase;
   color: var(--muted2);
   cursor: pointer;
   border-bottom: 2px solid transparent;
 }
 .tab:hover { color: var(--gold); }
 .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
-.panel { display: none; padding: 24px 28px; animation: fadeUp 0.3s ease; }
+.panel { display: none; padding: 24px 28px; }
 .panel.active { display: block; }
-@keyframes fadeUp { from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
 .sh {
   display: flex;
   align-items: center;
@@ -132,7 +112,6 @@ body::before {
   font-weight: 700;
   letter-spacing: 3px;
   color: var(--gold);
-  white-space: nowrap;
 }
 .sh-line {
   flex: 1;
@@ -141,7 +120,7 @@ body::before {
 }
 .stat-row {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -151,11 +130,9 @@ body::before {
   border-radius: 6px;
   padding: 16px;
 }
-.stat-card:hover { border-color: rgba(245,200,66,0.35); transform: translateY(-2px); }
 .stat-label {
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
-  letter-spacing: 2px;
   color: var(--muted2);
   margin-bottom: 8px;
 }
@@ -181,7 +158,6 @@ body::before {
   padding: 14px 10px;
   text-align: center;
 }
-.ind-card.on { border-color: rgba(245,200,66,0.5); background: rgba(245,200,66,0.06); }
 .ind-name {
   font-family: 'Orbitron', sans-serif;
   font-size: 8px;
@@ -192,14 +168,13 @@ body::before {
 .ind-status {
   display: inline-block;
   margin-top: 6px;
-  font-family: 'Share Tech Mono', monospace;
   font-size: 8px;
   padding: 2px 6px;
   border-radius: 2px;
 }
-.status-bull { background: rgba(0,229,160,0.15); color: var(--green); border:1px solid rgba(0,229,160,0.3); }
-.status-bear { background: rgba(255,64,96,0.15); color: var(--red); border:1px solid rgba(255,64,96,0.3); }
-.status-neu { background: rgba(61,224,255,0.1); color: var(--blue); border:1px solid rgba(61,224,255,0.3); }
+.status-bull { background: rgba(0,229,160,0.15); color: var(--green); }
+.status-bear { background: rgba(255,64,96,0.15); color: var(--red); }
+.status-neu { background: rgba(61,224,255,0.1); color: var(--blue); }
 .signal-box {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -219,12 +194,10 @@ body::before {
   font-weight: 900;
   padding: 12px 28px;
   border-radius: 4px;
-  letter-spacing: 3px;
 }
 .signal-buy { background:rgba(0,229,160,0.15); color:var(--green); border:2px solid var(--green); }
 .signal-sell { background:rgba(255,64,96,0.15); color:var(--red); border:2px solid var(--red); }
 .signal-wait { background:rgba(61,224,255,0.1); color:var(--blue); border:2px solid var(--blue); }
-.signal-score-bar { flex:1; }
 .score-track {
   height: 8px;
   background: var(--border);
@@ -235,7 +208,7 @@ body::before {
   height: 100%;
   border-radius: 4px;
   transition: width 1s ease;
-  background: linear-gradient(90deg, var(--gold2), var(--gold));
+  background: linear-gradient(90deg, #e8a020, var(--gold));
 }
 .signal-grid {
   display: grid;
@@ -246,10 +219,9 @@ body::before {
   background: rgba(245,200,66,0.04);
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 10px 12px;
+  padding: 10px;
 }
 .sig-item-label {
-  font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
   color: var(--muted2);
   margin-bottom: 4px;
@@ -269,7 +241,6 @@ body::before {
   font-family: 'Orbitron', sans-serif;
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 2px;
   padding: 8px 16px;
   border-radius: 3px;
   cursor: pointer;
@@ -277,146 +248,22 @@ body::before {
   background: var(--panel);
   color: var(--muted2);
 }
-.tf-btn:hover { border-color: var(--gold); color: var(--gold); }
 .tf-btn.active { background: rgba(245,200,66,0.12); border-color: var(--gold); color: var(--gold); }
-.agent-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 18px;
-}
-.agent-card.bull { border-color: rgba(0,229,160,0.35); }
-.agent-card.bear { border-color: rgba(255,64,96,0.35); }
-.ac-signal {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 28px;
-  font-weight: 900;
-  text-align: center;
-  padding: 10px 0;
-}
-.ac-signal.buy { color: var(--green); }
-.ac-signal.sell { color: var(--red); }
-.ac-signal.wait { color: var(--muted2); }
-.ac-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  margin-bottom: 12px;
-}
-.ac-metric {
-  background: rgba(245,200,66,0.04);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 7px;
-  text-align: center;
-}
-.ac-metric-lbl {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 8px;
-  color: var(--muted2);
-  margin-bottom: 3px;
-}
-.ac-metric-val {
-  font-family: 'Orbitron', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-}
-.ac-levels {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.ac-level {
-  border-radius: 4px;
-  padding: 7px 8px;
-  text-align: center;
-}
-.ac-level.entry { background: rgba(245,200,66,0.08); border: 1px solid rgba(245,200,66,0.3); }
-.ac-level.sl { background: rgba(255,64,96,0.08); border: 1px solid rgba(255,64,96,0.3); }
-.ac-level.tp { background: rgba(0,229,160,0.08); border: 1px solid rgba(0,229,160,0.3); }
-.ac-level-lbl {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 8px;
-  color: var(--muted2);
-  margin-bottom: 3px;
-}
-.ac-level-val {
-  font-family: 'Orbitron', monospace;
-  font-size: 12px;
-  font-weight: 700;
-}
-.ac-bar-wrap { margin-bottom: 8px; }
-.ac-bar-lbl {
-  display: flex;
-  justify-content: space-between;
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 8px;
-  color: var(--muted2);
-  margin-bottom: 4px;
-}
-.ac-bar-track {
-  height: 5px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.ac-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 1s ease;
-}
-.ac-pnl {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 10px;
-  background: rgba(245,200,66,0.03);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.hint { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 8px; }
 .btn-run {
   background: linear-gradient(135deg, rgba(245,200,66,0.2), rgba(245,200,66,0.08));
   border: 1px solid var(--gold);
   color: var(--gold);
-  padding: 10px 24px;
+  padding: 10px 20px;
   font-family: 'Orbitron', sans-serif;
   font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 2px;
   cursor: pointer;
   border-radius: 4px;
 }
-.ptc-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border-radius: 3px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  cursor: pointer;
-  margin-bottom: 5px;
-}
-.ptc-item.ptc-checked { border-color: rgba(0,200,80,0.4); background: rgba(0,200,80,0.04); }
-.ptc-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1.5px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-}
-.ptc-status { margin-left: auto; font-size: 9px; font-family: 'Share Tech Mono', monospace; padding: 1px 6px; border-radius: 2px; background: var(--surface); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media(max-width: 1000px) {
   .ind-grid { grid-template-columns: repeat(4, 1fr); }
-  .stat-row { grid-template-columns: repeat(3, 1fr); }
-  .grid2, .grid3 { grid-template-columns: 1fr; }
+  .stat-row { grid-template-columns: repeat(2, 1fr); }
+  .grid2 { grid-template-columns: 1fr; }
   .signal-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
@@ -437,75 +284,59 @@ body::before {
 <div class="tabs">
   <div class="tab active" onclick="showTab('overview',this)">📊 Overview</div>
   <div class="tab" onclick="showTab('signals',this)">⚡ Signals</div>
-  <div class="tab" onclick="showTab('agent',this)">🤖 AGENT v51</div>
-  <div class="tab" onclick="showTab('risk',this)">🛡️ Pre‑Trade</div>
   <div class="tab" onclick="showTab('backtest',this)">📈 Backtest</div>
   <div class="tab" onclick="showTab('telegram',this)">📲 Alerts</div>
 </div>
 
 <!-- OVERVIEW PANEL -->
 <div id="tab-overview" class="panel active">
-  <div class="sh"><div class="sh-title">XAUUSD SYSTEM OVERVIEW</div><div class="sh-line"></div></div>
+  <div class="sh"><div class="sh-title">XAUUSD MARKET OVERVIEW</div><div class="sh-line"></div></div>
   <div class="stat-row">
-    <div class="stat-card"><div class="stat-label">WIN RATE</div><div class="stat-val green" id="stat-wr">89%</div><div class="stat-sub">backtest</div></div>
-    <div class="stat-card"><div class="stat-label">MAX DD</div><div class="stat-val gold" id="stat-dd">5.0%</div><div class="stat-sub">peak‑to‑trough</div></div>
-    <div class="stat-card"><div class="stat-label">PROFIT FACTOR</div><div class="stat-val green" id="stat-pf">3.21</div><div class="stat-sub">gross profit/loss</div></div>
-    <div class="stat-card"><div class="stat-label">SHARPE</div><div class="stat-val blue" id="stat-sharpe">2.74</div><div class="stat-sub">risk‑adjusted</div></div>
-    <div class="stat-card"><div class="stat-label">CANDLES</div><div class="stat-val" id="candle-counter-val" style="color:var(--green)">0</div><div class="stat-sub" id="candle-counter-sub">M5 candles</div></div>
+    <div class="stat-card"><div class="stat-label">WIN RATE</div><div class="stat-val green">89%</div></div>
+    <div class="stat-card"><div class="stat-label">MAX DD</div><div class="stat-val gold">5.0%</div></div>
+    <div class="stat-card"><div class="stat-label">PROFIT FACTOR</div><div class="stat-val green">3.21</div></div>
+    <div class="stat-card"><div class="stat-label">CANDLES</div><div class="stat-val blue" id="candle-count">0</div></div>
   </div>
 
-  <div class="sh"><div class="sh-title">📊 MARKET REGIME</div><div class="sh-line"></div></div>
-  <div class="signal-box" id="regime-panel">Αναλύω αγορά...</div>
-
-  <div class="sh"><div class="sh-title">🤖 AI PROBABILITY</div><div class="sh-line"></div></div>
-  <div class="signal-box" id="ai-prob-panel">Υπολογίζω πιθανότητες...</div>
-
-  <div class="sh"><div class="sh-title">🎯 DYNAMIC SL/TP · ATR</div><div class="sh-line"></div></div>
-  <div class="signal-box" id="atr-sltp-panel">Υπολογίζω SL/TP...</div>
-
-  <div class="sh"><div class="sh-title">🕐 SESSION ACTIVITY</div><div class="sh-line"></div></div>
-  <div class="signal-box" id="session-panel">Φορτώνω sessions...</div>
-
-  <div class="sh"><div class="sh-title">💧 LIQUIDITY MAP</div><div class="sh-line"></div></div>
-  <div class="signal-box" id="liquidity-panel">Ψάχνω liquidity levels...</div>
-
-  <div class="sh"><div class="sh-title">📓 SIGNAL JOURNAL</div><div class="sh-line"></div></div>
-  <div class="signal-box" id="journal-panel">Δεν υπάρχουν σήματα ακόμα</div>
+  <div class="sh"><div class="sh-title">🎯 CURRENT SIGNAL</div><div class="sh-line"></div></div>
+  <div class="signal-box" id="signal-status-box">
+    <div style="text-align:center;padding:20px">Φόρτωση δεδομένων από Twelvedata...</div>
+  </div>
 
   <div class="sh"><div class="sh-title">TIMEFRAMES</div><div class="sh-line"></div></div>
   <div class="tf-row">
-    <div class="tf-btn active" onclick="selectTF(this)">M1</div>
-    <div class="tf-btn" onclick="selectTF(this)">M5</div>
-    <div class="tf-btn" onclick="selectTF(this)">M15</div>
-    <div class="tf-btn" onclick="selectTF(this)">M30</div>
-    <div class="tf-btn" onclick="selectTF(this)">H1</div>
+    <div class="tf-btn active" data-tf="M1" onclick="setActiveTF('M1')">M1</div>
+    <div class="tf-btn" data-tf="M5" onclick="setActiveTF('M5')">M5</div>
+    <div class="tf-btn" data-tf="M15" onclick="setActiveTF('M15')">M15</div>
+    <div class="tf-btn" data-tf="M30" onclick="setActiveTF('M30')">M30</div>
+    <div class="tf-btn" data-tf="H1" onclick="setActiveTF('H1')">H1</div>
   </div>
 
-  <div class="sh"><div class="sh-title">14 ΔΕΙΚΤΕΣ ΣΥΣΤΗΜΑΤΟΣ</div><div class="sh-line"></div></div>
-  <div class="ind-grid">
-    <div class="ind-card on"><div class="ind-name">RSI</div><div class="ind-status status-bull">BULL</div></div>
-    <div class="ind-card on"><div class="ind-name">MACD</div><div class="ind-status status-bull">BULL</div></div>
-    <div class="ind-card on"><div class="ind-name">EMA</div><div class="ind-status status-bull">ABOVE</div></div>
-    <div class="ind-card on"><div class="ind-name">ADX</div><div class="ind-status status-bull">32</div></div>
+  <div class="sh"><div class="sh-title">📊 INDICATORS (M5)</div><div class="sh-line"></div></div>
+  <div class="ind-grid" id="indicators-grid">
+    <div class="ind-card"><div class="ind-name">RSI</div><div class="ind-status status-neu">--</div></div>
+    <div class="ind-card"><div class="ind-name">MACD</div><div class="ind-status status-neu">--</div></div>
+    <div class="ind-card"><div class="ind-name">EMA</div><div class="ind-status status-neu">--</div></div>
+    <div class="ind-card"><div class="ind-name">ADX</div><div class="ind-status status-neu">--</div></div>
+    <div class="ind-card"><div class="ind-name">ATR</div><div class="ind-status status-neu">--</div></div>
   </div>
 </div>
 
 <!-- SIGNALS PANEL -->
 <div id="tab-signals" class="panel">
-  <div class="sh"><div class="sh-title">LIVE SIGNAL ENGINE · XAUUSD</div><div class="sh-line"></div></div>
+  <div class="sh"><div class="sh-title">LIVE SIGNAL ENGINE</div><div class="sh-line"></div></div>
   <div class="tf-row">
-    <div class="tf-btn active" onclick="selectTFSignal(this)">M1</div>
-    <div class="tf-btn" onclick="selectTFSignal(this)">M5</div>
-    <div class="tf-btn" onclick="selectTFSignal(this)">M15</div>
-    <div class="tf-btn" onclick="selectTFSignal(this)">M30</div>
-    <div class="tf-btn" onclick="selectTFSignal(this)">H1</div>
+    <div class="tf-btn active" data-tf="M5" onclick="setSignalTF('M5')">M5</div>
+    <div class="tf-btn" data-tf="M15" onclick="setSignalTF('M15')">M15</div>
+    <div class="tf-btn" data-tf="M30" onclick="setSignalTF('M30')">M30</div>
+    <div class="tf-btn" data-tf="H1" onclick="setSignalTF('H1')">H1</div>
   </div>
 
   <div class="signal-box">
     <div class="signal-main">
       <div class="signal-badge signal-wait" id="sig-badge">WAIT</div>
       <div class="signal-score-bar">
-        <div class="score-label">CONFLUENCE SCORE — <span id="sig-score-val">0%</span></div>
+        <div class="score-label">CONFLUENCE — <span id="sig-score-val">0%</span></div>
         <div class="score-track"><div class="score-fill" id="sig-score-fill" style="width:0%"></div></div>
       </div>
     </div>
@@ -513,92 +344,49 @@ body::before {
       <div class="sig-item"><div class="sig-item-label">ENTRY</div><div class="sig-item-val gold" id="sig-entry">---</div></div>
       <div class="sig-item"><div class="sig-item-label">STOP LOSS</div><div class="sig-item-val red" id="sig-sl">—</div></div>
       <div class="sig-item"><div class="sig-item-label">TAKE PROFIT</div><div class="sig-item-val green" id="sig-tp">—</div></div>
-      <div class="sig-item"><div class="sig-item-label">R/R RATIO</div><div class="sig-item-val blue" id="sig-rr">—</div></div>
+      <div class="sig-item"><div class="sig-item-label">R/R</div><div class="sig-item-val blue" id="sig-rr">—</div></div>
     </div>
   </div>
 
-  <div class="sh"><div class="sh-title">CONFLUENCE MATRIX</div><div class="sh-line"></div></div>
-  <div id="conf-matrix" class="ind-grid" style="grid-template-columns:repeat(7,1fr);"></div>
-
-  <div class="sh"><div class="sh-title">MULTI-TIMEFRAME</div><div class="sh-line"></div></div>
-  <div id="mtf-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px"></div>
-  <div id="mtf-verdict" class="signal-box" style="text-align:center">Φόρτωση δεδομένων...</div>
+  <div id="mtf-verdict" class="signal-box" style="text-align:center">Επιλέξτε timeframe για ανάλυση</div>
 </div>
 
-<!-- AGENT v51 PANEL (σύντομη έκδοση) -->
-<div id="tab-agent" class="panel">
-  <div class="sh"><div class="sh-title">🤖 XAUUSD AGENT v51</div><div class="sh-line"></div></div>
-  <div class="agent-card" id="a51-main-card">
-    <div class="ac-signal wait" id="a51-main-signal">WAIT</div>
-    <div class="ac-metrics">
-      <div class="ac-metric"><div class="ac-metric-lbl">PRICE</div><div class="ac-metric-val gold" id="a51-price">—</div></div>
-      <div class="ac-metric"><div class="ac-metric-lbl">ATR</div><div class="ac-metric-val blue" id="a51-atr">—</div></div>
-      <div class="ac-metric"><div class="ac-metric-lbl">RSI</div><div class="ac-metric-val" id="a51-rsi">—</div></div>
-    </div>
-    <div class="ac-levels">
-      <div class="ac-level entry"><div class="ac-level-lbl">ENTRY</div><div class="ac-level-val gold" id="a51-entry">—</div></div>
-      <div class="ac-level sl"><div class="ac-level-lbl">SL</div><div class="ac-level-val red" id="a51-sl">—</div></div>
-      <div class="ac-level tp"><div class="ac-level-lbl">TP</div><div class="ac-level-val green" id="a51-tp">—</div></div>
-    </div>
-    <div class="ac-bar-wrap">
-      <div class="ac-bar-lbl"><span>CONFLUENCE</span><span id="a51-conf-pct">0%</span></div>
-      <div class="ac-bar-track"><div class="ac-bar-fill" id="a51-conf-bar" style="width:0%"></div></div>
-    </div>
-  </div>
-</div>
-
-<!-- PRE-TRADE CHECKLIST (σύντομη) -->
-<div id="tab-risk" class="panel">
-  <div class="sh"><div class="sh-title">⚡ PRE-TRADE CHECKLIST</div><div class="sh-line"></div></div>
-  <div class="grid2">
-    <div class="signal-box">
-      <div>TRADE SETUP</div>
-      <select id="ptc-dir"><option>BUY</option><option>SELL</option></select>
-      <input type="number" id="ptc-entry" placeholder="Entry" style="width:100%;margin:5px 0;padding:8px;background:var(--surface);border:1px solid var(--border);color:var(--text)">
-      <input type="number" id="ptc-sl" placeholder="Stop Loss" style="width:100%;margin:5px 0;padding:8px;background:var(--surface);border:1px solid var(--border);color:var(--text)">
-      <input type="number" id="ptc-tp" placeholder="Take Profit" style="width:100%;margin:5px 0;padding:8px;background:var(--surface);border:1px solid var(--border);color:var(--text)">
-      <div id="ptc-rr-ratio" style="margin-top:10px;color:var(--gold)">R:R: —</div>
-      <button onclick="ptcCalcRR()" class="btn-run" style="margin-top:10px">CALCULATE</button>
-    </div>
-    <div class="signal-box">
-      <div>CHECKLIST</div>
-      <div class="ptc-item" onclick="ptcToggle(this)" data-id="htf"><div class="ptc-icon"></div><div>Higher TF alignment</div><div class="ptc-status">PENDING</div></div>
-      <div class="ptc-item" onclick="ptcToggle(this)" data-id="rr"><div class="ptc-icon"></div><div>R:R ≥ 1:2</div><div class="ptc-status">PENDING</div></div>
-      <div id="ptc-mainVerdict" style="margin-top:10px;padding:10px;text-align:center;background:rgba(0,0,0,0.3);border-radius:4px">NOT READY</div>
-    </div>
-  </div>
-</div>
-
-<!-- BACKTEST PANEL (σύντομη) -->
+<!-- BACKTEST PANEL -->
 <div id="tab-backtest" class="panel">
   <div class="sh"><div class="sh-title">BACKTEST ENGINE</div><div class="sh-line"></div></div>
   <div class="grid2">
     <div class="signal-box">
-      <div>CAPITAL: <input type="number" id="bt-cap" value="10000"></div>
-      <div>RISK %: <input type="number" id="bt-risk" value="1"></div>
-      <div>SL PIPS: <input type="number" id="bt-sl" value="20"></div>
-      <div>TP PIPS: <input type="number" id="bt-tp" value="40"></div>
-      <div>TF: <select id="bt-tf"><option>M5</option><option>M15</option><option>M30</option><option>H1</option></select></div>
-      <button onclick="runBT()" class="btn-run" style="margin-top:10px">RUN BACKTEST</button>
+      <div>CAPITAL: <input type="number" id="bt-cap" value="10000" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px;width:100%"></div>
+      <div style="margin-top:10px">SL PIPS: <input type="number" id="bt-sl" value="20" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px;width:100%"></div>
+      <div style="margin-top:10px">TP PIPS: <input type="number" id="bt-tp" value="40" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px;width:100%"></div>
+      <div style="margin-top:10px">TIMEFRAME: 
+        <select id="bt-tf" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px">
+          <option>M5</option><option>M15</option><option>M30</option><option>H1</option>
+        </select>
+      </div>
+      <button onclick="runBacktest()" class="btn-run" style="margin-top:15px;width:100%">▶ RUN BACKTEST</button>
     </div>
     <div id="bt-results" style="display:none" class="signal-box">
       <div>PROFIT: <span id="r-profit">$0</span></div>
       <div>WIN RATE: <span id="r-wr">0%</span></div>
       <div>TRADES: <span id="r-trades">0</span></div>
-      <div id="bt-log"></div>
+      <div id="bt-log" style="margin-top:10px;font-size:11px;max-height:200px;overflow:auto"></div>
     </div>
-    <div id="bt-ph" style="text-align:center;padding:40px;color:var(--muted2)">Πάτα RUN για backtest</div>
   </div>
+  <div id="bt-placeholder" class="signal-box" style="text-align:center">Συμπλήρωσε παραμέτρους και πάτα RUN</div>
 </div>
 
-<!-- TELEGRAM ALERTS (σύντομη) -->
+<!-- TELEGRAM PANEL -->
 <div id="tab-telegram" class="panel">
   <div class="sh"><div class="sh-title">TELEGRAM ALERTS</div><div class="sh-line"></div></div>
   <div class="grid2">
     <div class="signal-box">
-      <div id="alerts-status" style="color:var(--red)">❌ ΑΝΕΝΕΡΓΑ</div>
-      <button id="btn-alerts-toggle" onclick="toggleAlerts()" class="btn-run" style="margin-top:10px">🔕 ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
-      <button onclick="sendTestAlert()" class="btn-run" style="margin-top:5px">🧪 TEST</button>
+      <div id="alerts-status" style="color:var(--red);margin-bottom:10px">❌ ΑΝΕΝΕΡΓΑ</div>
+      <button onclick="toggleAlerts()" class="btn-run" style="width:100%">🔔 ΕΝΕΡΓΟΠΟΙΗΣΗ</button>
+      <button onclick="sendTestAlert()" class="btn-run" style="width:100%;margin-top:10px">🧪 TEST ALERT</button>
+    </div>
+    <div class="signal-box">
+      <div>MIN SCORE: <input type="range" min="60" max="100" value="70" id="min-score-slider" oninput="document.getElementById('min-score-val').textContent=this.value+'%'"><span id="min-score-val">70%</span></div>
     </div>
   </div>
   <div id="alert-log" class="signal-box" style="min-height:100px">Δεν έχουν σταλεί alerts</div>
@@ -606,13 +394,12 @@ body::before {
 
 <script>
 // ============================================================
-// TWELVEDATA API CONFIGURATION
+// TWELVEDATA CONFIGURATION
 // ============================================================
 const TD_API_KEY = 'f698ff917a974f4592722d2bc6a6f016';
 const TD_SYMBOL = 'XAU/USD';
 
-// TF mapping for Twelvedata
-const TD_TF_MAP = {
+const TF_MAP = {
   'M1': '1min',
   'M5': '5min',
   'M15': '15min',
@@ -620,49 +407,423 @@ const TD_TF_MAP = {
   'H1': '1h'
 };
 
-// Cache for candles per timeframe
-window._candleCache = {};
-window._lastFetchTime = {};
-window._realIndicators = {};
-window._lastKnownPrice = null;
-window._activeTab = 'overview';
-
-// Rate limiter (8 requests/min max for free tier)
-let _lastRequestTime = 0;
-let _pendingRequests = {};
+let candleCache = {};
+let lastRequestTime = 0;
+let activeTF = 'M5';
+let signalTF = 'M5';
+let lastAlert = null;
+let alertsEnabled = false;
+let currentPrice = null;
 
 // ============================================================
 // FETCH CANDLES FROM TWELVEDATA
 // ============================================================
 async function fetchCandles(tf) {
-  const interval = TD_TF_MAP[tf];
+  const interval = TF_MAP[tf];
   if (!interval) return null;
   
   const now = Date.now();
-  const cache = window._candleCache[tf];
-  
-  // Return cache if less than 30 seconds old
-  if (cache && (now - cache.ts) < 30000) {
-    return cache.candles;
+  const cached = candleCache[tf];
+  if (cached && (now - cached.ts) < 30000) {
+    return cached.candles;
   }
   
-  // Prevent duplicate requests
-  if (_pendingRequests[tf]) return _pendingRequests[tf];
-  
-  // Rate limit: at least 8 seconds between requests
-  const timeSinceLast = now - _lastRequestTime;
-  if (timeSinceLast < 8000 && _lastRequestTime > 0) {
-    return cache ? cache.candles : null;
+  if (now - lastRequestTime < 8000 && lastRequestTime > 0) {
+    return cached ? cached.candles : null;
   }
   
-  _lastRequestTime = now;
+  lastRequestTime = now;
   
-  const promise = (async () => {
-    try {
-      const url = `https://api.twelvedata.com/time_series?symbol=${TD_SYMBOL}&interval=${interval}&outputsize=200&apikey=${TD_API_KEY}`;
-      const response = await fetch(url);
-      const data = await response.json();
+  try {
+    const url = `https://api.twelvedata.com/time_series?symbol=${TD_SYMBOL}&interval=${interval}&outputsize=100&apikey=${TD_API_KEY}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.status === 'error' || !data.values) {
+      console.error('Twelvedata error:', data);
+      return null;
+    }
+    
+    const candles = data.values.reverse().map(v => ({
+      time: new Date(v.datetime).getTime(),
+      open: parseFloat(v.open),
+      high: parseFloat(v.high),
+      low: parseFloat(v.low),
+      close: parseFloat(v.close),
+      volume: parseInt(v.volume) || 0
+    }));
+    
+    candleCache[tf] = { candles, ts: now };
+    
+    // Update current price
+    if (candles.length > 0) {
+      currentPrice = candles[candles.length-1].close;
+      document.getElementById('header-price').textContent = currentPrice.toFixed(2);
+      document.getElementById('candle-count').textContent = candles.length;
+    }
+    
+    return candles;
+  } catch(e) {
+    console.error('Fetch error:', e);
+    return null;
+  }
+}
+
+// ============================================================
+// INDICATOR CALCULATIONS
+// ============================================================
+function calcRSI(closes, period = 14) {
+  if (closes.length < period + 1) return 50;
+  let gains = 0, losses = 0;
+  for (let i = closes.length - period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i-1];
+    if (diff > 0) gains += diff;
+    else losses += Math.abs(diff);
+  }
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
+}
+
+function calcEMA(closes, period) {
+  if (closes.length < period) return closes[closes.length-1];
+  const k = 2 / (period + 1);
+  let ema = closes.slice(0, period).reduce((a,b) => a+b, 0) / period;
+  for (let i = period; i < closes.length; i++) {
+    ema = closes[i] * k + ema * (1 - k);
+  }
+  return ema;
+}
+
+function calcMACD(closes) {
+  if (closes.length < 26) return { macd: 0, signal: 0, hist: 0 };
+  const ema12 = calcEMA(closes, 12);
+  const ema26 = calcEMA(closes, 26);
+  const macdLine = ema12 - ema26;
+  
+  const macdVals = [];
+  for (let i = 26; i <= closes.length; i++) {
+    const e12 = calcEMA(closes.slice(0, i), 12);
+    const e26 = calcEMA(closes.slice(0, i), 26);
+    macdVals.push(e12 - e26);
+  }
+  const signalLine = calcEMA(macdVals, 9);
+  return { macd: macdLine, signal: signalLine, hist: macdLine - signalLine };
+}
+
+function calcATR(highs, lows, closes, period = 14) {
+  if (closes.length < period + 1) return 1;
+  let trSum = 0;
+  for (let i = closes.length - period; i < closes.length; i++) {
+    const tr = Math.max(
+      highs[i] - lows[i],
+      Math.abs(highs[i] - closes[i-1]),
+      Math.abs(lows[i] - closes[i-1])
+    );
+    trSum += tr;
+  }
+  return trSum / period;
+}
+
+function calcADX(highs, lows, closes, period = 14) {
+  if (closes.length < period * 2) return 25;
+  let plusDM = 0, minusDM = 0, trSum = 0;
+  const start = closes.length - period;
+  for (let i = start + 1; i < closes.length; i++) {
+    const up = highs[i] - highs[i-1];
+    const down = lows[i-1] - lows[i];
+    if (up > down && up > 0) plusDM += up;
+    if (down > up && down > 0) minusDM += down;
+    trSum += Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1]));
+  }
+  const atr = trSum / period;
+  const plusDI = (plusDM / atr) * 100;
+  const minusDI = (minusDM / atr) * 100;
+  const dx = Math.abs(plusDI - minusDI) / (plusDI + minusDI || 1) * 100;
+  return dx;
+}
+
+function analyzeCandles(candles) {
+  if (!candles || candles.length < 30) return null;
+  
+  const closes = candles.map(c => c.close);
+  const highs = candles.map(c => c.high);
+  const lows = candles.map(c => c.low);
+  const price = closes[closes.length-1];
+  
+  const rsi = calcRSI(closes, 14);
+  const ema9 = calcEMA(closes, 9);
+  const ema21 = calcEMA(closes, 21);
+  const ema50 = calcEMA(closes, 50);
+  const macd = calcMACD(closes);
+  const atr = calcATR(highs, lows, closes, 14);
+  const adx = calcADX(highs, lows, closes, 14);
+  
+  const signals = {
+    RSI: rsi > 55 ? 'BULL' : rsi < 45 ? 'BEAR' : 'NEUT',
+    MACD: macd.hist > 0 ? 'BULL' : macd.hist < 0 ? 'BEAR' : 'NEUT',
+    EMA: price > ema21 && ema21 > ema50 ? 'BULL' : price < ema21 && ema21 < ema50 ? 'BEAR' : 'NEUT',
+    ADX: adx > 25 ? (price > ema21 ? 'BULL' : 'BEAR') : 'NEUT'
+  };
+  
+  const bullCount = Object.values(signals).filter(s => s === 'BULL').length;
+  const bearCount = Object.values(signals).filter(s => s === 'BEAR').length;
+  const total = Object.keys(signals).length;
+  const score = Math.round((Math.max(bullCount, bearCount) / total) * 100);
+  const direction = bullCount > bearCount ? 'BUY' : bearCount > bullCount ? 'SELL' : 'WAIT';
+  
+  return { signals, score, direction, price, atr, rsi, adx, ema9, ema21, ema50, macd };
+}
+
+// ============================================================
+// SIGNAL UPDATE
+// ============================================================
+async function updateSignals() {
+  const candles = await fetchCandles(signalTF);
+  if (!candles || candles.length < 30) {
+    document.getElementById('mtf-verdict').innerHTML = '⚠️ Ανεπαρκή δεδομένα για ' + signalTF;
+    return;
+  }
+  
+  const analysis = analyzeCandles(candles);
+  if (!analysis) return;
+  
+  const badge = document.getElementById('sig-badge');
+  badge.textContent = analysis.direction;
+  badge.className = 'signal-badge ' + (analysis.direction === 'BUY' ? 'signal-buy' : analysis.direction === 'SELL' ? 'signal-sell' : 'signal-wait');
+  
+  document.getElementById('sig-score-val').textContent = analysis.score + '%';
+  document.getElementById('sig-score-fill').style.width = analysis.score + '%';
+  
+  const atrSL = analysis.atr * 1.5;
+  const slPips = Math.max(12, atrSL);
+  const tpPips = slPips * 2;
+  
+  const entry = currentPrice || analysis.price;
+  const sl = analysis.direction === 'BUY' ? entry - slPips : entry + slPips;
+  const tp = analysis.direction === 'BUY' ? entry + tpPips : entry - tpPips;
+  
+  document.getElementById('sig-entry').textContent = entry.toFixed(2);
+  document.getElementById('sig-sl').textContent = sl.toFixed(2);
+  document.getElementById('sig-tp').textContent = tp.toFixed(2);
+  document.getElementById('sig-rr').textContent = '1:2';
+  
+  const mtfDiv = document.getElementById('mtf-verdict');
+  mtfDiv.innerHTML = `
+    <div style="font-size:16px;font-weight:700;color:${analysis.direction === 'BUY' ? 'var(--green)' : analysis.direction === 'SELL' ? 'var(--red)' : 'var(--blue)'}">
+      ${analysis.direction} SIGNAL
+    </div>
+    <div style="margin-top:8px">RSI: ${analysis.rsi.toFixed(1)} | ADX: ${analysis.adx.toFixed(1)}</div>
+    <div>Score: ${analysis.score}% | Confidence: ${analysis.score >= 75 ? 'HIGH' : analysis.score >= 60 ? 'MEDIUM' : 'LOW'}</div>
+  `;
+  
+  // Update indicators grid
+  const grid = document.getElementById('indicators-grid');
+  const indicators = ['RSI', 'MACD', 'EMA', 'ADX', 'ATR'];
+  const values = {
+    RSI: analysis.rsi.toFixed(1),
+    MACD: analysis.macd.hist > 0 ? '+' + analysis.macd.hist.toFixed(2) : analysis.macd.hist.toFixed(2),
+    EMA: analysis.ema21.toFixed(1),
+    ADX: analysis.adx.toFixed(1),
+    ATR: analysis.atr.toFixed(2)
+  };
+  
+  grid.innerHTML = indicators.map(ind => `
+    <div class="ind-card">
+      <div class="ind-name">${ind}</div>
+      <div class="ind-status ${analysis.signals[ind] === 'BULL' ? 'status-bull' : analysis.signals[ind] === 'BEAR' ? 'status-bear' : 'status-neu'}">
+        ${values[ind]} | ${analysis.signals[ind] || 'NEUT'}
+      </div>
+    </div>
+  `).join('');
+  
+  // Check alert
+  if (alertsEnabled && analysis.score >= parseInt(document.getElementById('min-score-slider')?.value || 70)) {
+    const alertKey = analysis.direction + '_' + signalTF;
+    if (alertKey !== lastAlert) {
+      lastAlert = alertKey;
+      sendTelegramAlert(analysis.direction, signalTF, entry.toFixed(2), sl.toFixed(2), tp.toFixed(2), analysis.score);
+      const log = document.getElementById('alert-log');
+      const time = new Date().toLocaleTimeString();
+      log.innerHTML = `<div>✅ ${time} - ${analysis.direction} ${signalTF} @ ${entry.toFixed(2)} (${analysis.score}%)</div>` + log.innerHTML;
+    }
+  }
+}
+
+// ============================================================
+// BACKTEST
+// ============================================================
+async function runBacktest() {
+  const capital = parseFloat(document.getElementById('bt-cap').value) || 10000;
+  const slPips = parseFloat(document.getElementById('bt-sl').value) || 20;
+  const tpPips = parseFloat(document.getElementById('bt-tp').value) || 40;
+  const tf = document.getElementById('bt-tf').value;
+  
+  const candles = await fetchCandles(tf);
+  if (!candles || candles.length < 50) {
+    alert('Ανεπαρκή δεδομένα για backtest. Χρειάζονται τουλάχιστον 50 κεριά.');
+    return;
+  }
+  
+  const trades = [];
+  let equity = capital;
+  let inTrade = false;
+  let entryPrice = 0, direction = '', sl = 0, tp = 0;
+  
+  for (let i = 30; i < candles.length; i++) {
+    const candle = candles[i];
+    const closes = candles.slice(0, i+1).map(c => c.close);
+    const highs = candles.slice(0, i+1).map(c => c.high);
+    const lows = candles.slice(0, i+1).map(c => c.low);
+    
+    if (!inTrade) {
+      const rsi = calcRSI(closes, 14);
+      const ema9 = calcEMA(closes, 9);
+      const ema21 = calcEMA(closes, 21);
+      const ema50 = calcEMA(closes, 50);
+      const macd = calcMACD(closes);
       
-      if (data.status === 'error' || !data.values) {
-        console.warn('Twelvedata error:', data.message);
-        return null;
+      let score = 0;
+      if (ema9 > ema21 && ema21 > ema50) score += 35;
+      else if (ema9 < ema21 && ema21 < ema50) score -= 35;
+      if (rsi > 55 && rsi < 70) score += 20;
+      else if (rsi < 45 && rsi > 30) score -= 20;
+      if (macd.hist > 0) score += 25;
+      else if (macd.hist < 0) score -= 25;
+      
+      if (Math.abs(score) >= 65) {
+        inTrade = true;
+        direction = score > 0 ? 'BUY' : 'SELL';
+        entryPrice = candle.close;
+        sl = direction === 'BUY' ? entryPrice - slPips : entryPrice + slPips;
+        tp = direction === 'BUY' ? entryPrice + tpPips : entryPrice - tpPips;
+      }
+    } else {
+      let closed = false;
+      let pnl = 0;
+      if (direction === 'BUY') {
+        if (candle.low <= sl) { pnl = -slPips; closed = true; }
+        else if (candle.high >= tp) { pnl = tpPips; closed = true; }
+      } else {
+        if (candle.high >= sl) { pnl = -slPips; closed = true; }
+        else if (candle.low <= tp) { pnl = tpPips; closed = true; }
+      }
+      if (closed) {
+        equity += pnl;
+        trades.push({ direction, entry: entryPrice, exit: candle.close, pnl, win: pnl > 0 });
+        inTrade = false;
+      }
+    }
+  }
+  
+  if (trades.length === 0) {
+    alert('Κανένα trade. Μείωσε το threshold ή περίμενε περισσότερα δεδομένα.');
+    return;
+  }
+  
+  const wins = trades.filter(t => t.win).length;
+  const profit = equity - capital;
+  const winRate = (wins / trades.length * 100).toFixed(1);
+  
+  document.getElementById('bt-results').style.display = 'block';
+  document.getElementById('bt-placeholder').style.display = 'none';
+  document.getElementById('r-profit').textContent = (profit >= 0 ? '+' : '') + '$' + Math.abs(profit).toFixed(0);
+  document.getElementById('r-wr').textContent = winRate + '%';
+  document.getElementById('r-trades').textContent = trades.length;
+  
+  const logDiv = document.getElementById('bt-log');
+  logDiv.innerHTML = trades.slice(-15).reverse().map(t => 
+    `<div style="border-bottom:1px solid var(--border);padding:5px 0">
+      ${t.direction} @ ${t.entry.toFixed(2)} → ${t.exit.toFixed(2)} | ${t.pnl >= 0 ? '+' : ''}${t.pnl} pips | ${t.win ? '✅ WIN' : '❌ LOSS'}
+    </div>`
+  ).join('');
+}
+
+// ============================================================
+// TELEGRAM ALERTS
+// ============================================================
+const TG_TOKEN = '8329064212:AAFWr7yycS9pvk3Mh65EBmIh9azQA6Dz80g';
+const TG_CHAT = '1914782302';
+
+async function sendTelegramAlert(dir, tf, entry, sl, tp, score) {
+  const emoji = dir === 'BUY' ? '🟢' : '🔴';
+  const msg = `${emoji} <b>${dir} SIGNAL</b>\n⏱ ${tf}\n📍 Entry: ${entry}\n🛑 SL: ${sl}\n🎯 TP: ${tp}\n🔥 Score: ${score}%`;
+  try {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TG_CHAT, text: msg, parse_mode: 'HTML' })
+    });
+  } catch(e) {}
+}
+
+async function sendTestAlert() {
+  await sendTelegramAlert('BUY', 'M5', '3200.00', '3190.00', '3220.00', 85);
+  const log = document.getElementById('alert-log');
+  log.innerHTML = `<div>🧪 Test alert sent at ${new Date().toLocaleTimeString()}</div>` + log.innerHTML;
+}
+
+function toggleAlerts() {
+  alertsEnabled = !alertsEnabled;
+  const btn = document.getElementById('btn-alerts-toggle');
+  const status = document.getElementById('alerts-status');
+  if (alertsEnabled) {
+    btn.textContent = '🔔 ALERTS ON — ΑΠΕΝΕΡΓΟΠΟΙΗΣΗ';
+    status.innerHTML = '✅ ΕΝΕΡΓΑ';
+    status.style.color = 'var(--green)';
+  } else {
+    btn.textContent = '🔕 ALERTS OFF — ΕΝΕΡΓΟΠΟΙΗΣΗ';
+    status.innerHTML = '❌ ΑΝΕΝΕΡΓΑ';
+    status.style.color = 'var(--red)';
+  }
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function showTab(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  el.classList.add('active');
+  if (id === 'signals') updateSignals();
+}
+
+function setActiveTF(tf) {
+  activeTF = tf;
+  document.querySelectorAll('#tab-overview .tf-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`#tab-overview .tf-btn[data-tf="${tf}"]`).classList.add('active');
+  fetchCandles(tf).then(candles => {
+    if (candles) {
+      const analysis = analyzeCandles(candles);
+      if (analysis) {
+        document.getElementById('signal-status-box').innerHTML = `
+          <div style="font-size:24px;font-weight:900;color:${analysis.direction === 'BUY' ? 'var(--green)' : analysis.direction === 'SELL' ? 'var(--red)' : 'var(--blue)'}">
+            ${analysis.direction}
+          </div>
+          <div>Score: ${analysis.score}% | RSI: ${analysis.rsi.toFixed(1)} | ATR: ${analysis.atr.toFixed(2)}</div>
+        `;
+      }
+    }
+  });
+}
+
+function setSignalTF(tf) {
+  signalTF = tf;
+  document.querySelectorAll('#tab-signals .tf-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`#tab-signals .tf-btn[data-tf="${tf}"]`).classList.add('active');
+  updateSignals();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+setActiveTF('M5');
+setSignalTF('M5');
+setInterval(() => { if (document.visibilityState === 'visible') updateSignals(); }, 10000);
+setTimeout(updateSignals, 1000);
+</script>
+</body>
+</html>
