@@ -2,115 +2,134 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <title>SMC MULTI-TERMINAL v51.9</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <title>SMC FUNDED TERMINAL v52.2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg: #050709; --panel: #0b1018; --gold: #f5c842; --green: #00e5a0; --red: #ff4060; --text: #c8d1d9; --border: #1c2a3a; }
-        body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
-        .main-layout { display: grid; grid-template-columns: 320px 1fr 300px; height: 100vh; gap: 1px; background: var(--border); }
-        .panel { background: var(--panel); padding: 15px; border: 0.5px solid var(--border); overflow-y: auto; }
-        input, select { background: #161b22; border: 1px solid var(--border); color: white; padding: 10px; width: 85%; margin-bottom: 8px; border-radius: 4px; }
-        button { background: var(--gold); color: black; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; margin: 5px 0; }
-        .pair-btn { background: #1c2a3a; color: var(--gold); border: 1px solid var(--gold); padding: 5px; width: 30%; font-size: 10px; margin: 2px; }
-        .price-tag { font-family: 'Orbitron', sans-serif; font-size: 32px; color: var(--gold); }
+        :root { --bg: #050709; --gold: #f5c842; --green: #00e5a0; --red: #ff4060; --border: #1c2a3a; }
+        body { background: var(--bg); color: #c8d1d9; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; }
+        .main-layout { display: grid; grid-template-columns: 300px 1fr; height: 100vh; }
+        .sidebar { background: #0b1018; padding: 20px; border-right: 1px solid var(--border); }
+        .chart-area { background: #000; position: relative; }
+        input { background: #161b22; border: 1px solid var(--border); color: white; padding: 12px; width: 85%; margin-bottom: 15px; border-radius: 4px; font-family: 'Share Tech Mono'; }
+        button { background: var(--gold); color: black; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; font-family: 'Orbitron'; }
+        .price-display { position: absolute; top: 20px; right: 20px; text-align: right; z-index: 10; }
+        #live-price { font-family: 'Orbitron'; font-size: 45px; color: var(--gold); line-height: 1; }
+        .status-tag { font-size: 10px; padding: 3px 8px; border-radius: 3px; margin-top: 5px; display: inline-block; }
+        .err { background: rgba(255,64,96,0.2); color: var(--red); border: 1px solid var(--red); }
+        .ok { background: rgba(0,229,160,0.2); color: var(--green); border: 1px solid var(--green); }
     </style>
 </head>
 <body>
     <div class="main-layout">
-        <div class="panel">
-            <h3 style="color:var(--gold)">STATION CONFIG</h3>
-            <input type="password" id="api-key" placeholder="TwelveData Key">
+        <div class="sidebar">
+            <h2 style="color:var(--gold); font-family: 'Orbitron'; font-size: 18px;">FUNDED SYNC</h2>
+            <label style="font-size: 11px;">TWELVEDATA API KEY</label>
+            <input type="password" id="api-key" placeholder="Enter Key...">
             
-            <label style="font-size: 11px;">QUICK SELECT</label>
-            <div style="display: flex; flex-wrap: wrap; margin-bottom: 10px;">
-                <button class="pair-btn" onclick="setPair('XAU/USD')">XAU/USD</button>
-                <button class="pair-btn" onclick="setPair('EUR/USD')">EUR/USD</button>
-                <button class="pair-btn" onclick="setPair('GBP/USD')">GBP/USD</button>
-            </div>
-
-            <label style="font-size: 11px;">BROKER</label>
-            <select id="broker-select">
-                <option value="OANDA:">OANDA</option>
-                <option value="FXCM:">FXCM</option>
-                <option value="">Default</option>
-            </select>
+            <label style="font-size: 11px;">SYMBOL (OANDA FEED)</label>
+            <input type="text" id="symbol" value="OANDA:XAU/USD">
             
-            <input type="text" id="symbol" value="XAU/USD">
-            <button onclick="updateLoop()" style="background:var(--green)">CONNECT & SYNC</button>
+            <button onclick="init()">START TERMINAL</button>
+            <div id="status-log"></div>
             
-            <div style="margin-top:20px; padding:10px; border:1px solid #333;">
-                <p style="font-size:10px; color:var(--gold)">FINE TUNE (SYNC TO TV)</p>
-                <button onclick="quickOffset(1)" style="width:45%; background:#222; color:white;">+ Pips</button>
-                <button onclick="quickOffset(-1)" style="width:45%; background:#222; color:white;">- Pips</button>
+            <div style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <p style="font-size: 11px; color: var(--gold);">PRECISION OFFSET</p>
+                <div style="display: flex; gap: 5px;">
+                    <button onclick="setOffset(0.05)" style="padding: 5px; font-size: 10px;">+0.05</button>
+                    <button onclick="setOffset(-0.05)" style="padding: 5px; font-size: 10px;">-0.05</button>
+                </div>
+                <p id="offset-show" style="font-size: 10px; font-family: monospace; margin-top: 5px;">Current: 0.00</p>
             </div>
         </div>
-        
-        <div class="panel" style="padding:0; position:relative; background:#000;">
-            <div style="position:absolute; top:20px; right:20px; z-index:10; text-align:right;">
-                <div id="disp-sym" style="color:var(--gold); font-size:12px;">---</div>
-                <div id="live-price" class="price-tag">0.00</div>
+
+        <div class="chart-area">
+            <div class="price-display">
+                <div id="pair-name" style="color: var(--gold); font-size: 14px;">---</div>
+                <div id="live-price">0.00</div>
+                <div id="update-time" style="font-size: 10px; color: #444;">Last Sync: --:--:--</div>
             </div>
             <canvas id="mainChart"></canvas>
-        </div>
-
-        <div class="panel" style="text-align:center;">
-            <h3 style="color:var(--gold)">ANALYSIS</h3>
-            <div id="h1-trend" style="font-size:18px; margin-top:20px;">---</div>
-            <div id="status" style="font-size:45px; font-weight:bold; margin:20px 0;">WAIT</div>
-            <div id="msg" style="font-size:12px; color:var(--gold);">Ready...</div>
         </div>
     </div>
 
     <script>
         let chart = null;
-        let state = { offset: 0, decimals: 2, tf: '5min' };
+        let config = { key: '', sym: '', offset: 0, decimals: 2 };
 
-        document.getElementById('api-key').value = localStorage.getItem('xau_key') || '';
-
-        function setPair(p) {
-            document.getElementById('symbol').value = p;
-            updateLoop();
+        function setOffset(val) {
+            config.offset += val;
+            document.getElementById('offset-show').innerText = "Current: " + config.offset.toFixed(2);
+            fetchData();
         }
 
-        async function updateLoop() {
-            const key = document.getElementById('api-key').value.trim();
-            const broker = document.getElementById('broker-select').value;
-            const pair = document.getElementById('symbol').value.trim();
-            if(!key) return;
-            localStorage.setItem('xau_key', key);
+        async function init() {
+            config.key = document.getElementById('api-key').value.trim();
+            config.sym = document.getElementById('symbol').value.trim();
+            if(!config.key) return alert("API Key Required");
+            
+            fetchData();
+            setInterval(fetchData, 10000); // Sync κάθε 10 δευτερόλεπτα
+        }
 
+        async function fetchData() {
+            const log = document.getElementById('status-log');
             try {
-                const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(broker + pair)}&interval=${state.tf}&apikey=${key}&outputsize=50`;
+                const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(config.sym)}&interval=5min&apikey=${config.key}&outputsize=60`;
                 const res = await fetch(url);
                 const data = await res.json();
-                if(data.status === "error") return;
 
-                state.decimals = (pair.includes("USD") && !pair.includes("XAU")) ? 5 : 2;
-                const candles = data.values.map(v => ({ t: v.datetime.split(' ')[1], c: parseFloat(v.close) + state.offset })).reverse();
+                if(data.status === "error") {
+                    log.innerHTML = `<div class="status-tag err">API ERROR: ${data.message}</div>`;
+                    return;
+                }
 
-                document.getElementById('live-price').innerText = candles[candles.length-1].c.toFixed(state.decimals);
-                document.getElementById('disp-sym').innerText = broker + pair;
-                renderChart(candles);
-            } catch(e) { console.error(e); }
+                log.innerHTML = `<div class="status-tag ok">INSTITUTIONAL FEED ACTIVE</div>`;
+                
+                config.decimals = (config.sym.includes("EUR") || config.sym.includes("GBP")) ? 5 : 2;
+                const candles = data.values.map(v => ({
+                    t: v.datetime.split(' ')[1],
+                    c: parseFloat(v.close) + config.offset
+                })).reverse();
+
+                updateUI(candles);
+            } catch (e) {
+                log.innerHTML = `<div class="status-tag err">CONNECTION FAILED</div>`;
+            }
         }
 
-        function quickOffset(direction) {
-            const step = state.decimals === 5 ? 0.00010 : 0.10;
-            state.offset += (direction * step);
-            updateLoop();
-        }
+        function updateUI(candles) {
+            const last = candles[candles.length-1];
+            document.getElementById('live-price').innerText = last.c.toFixed(config.decimals);
+            document.getElementById('pair-name').innerText = config.sym;
+            document.getElementById('update-time').innerText = "Last Sync: " + new Date().toLocaleTimeString();
 
-        function renderChart(candles) {
             const ctx = document.getElementById('mainChart').getContext('2d');
             if(chart) chart.destroy();
             chart = new Chart(ctx, {
                 type: 'line',
-                data: { labels: candles.map(c=>c.t), datasets:[{data:candles.map(c=>c.c), borderColor:'#f5c842', pointRadius:0, borderWidth:2}] },
-                options: { maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{grid:{color:'#1c2a3a'}}} }
+                data: {
+                    labels: candles.map(c => c.t),
+                    datasets: [{
+                        data: candles.map(c => c.c),
+                        borderColor: '#f5c842',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: { 
+                        x: { display: false },
+                        y: { position: 'right', grid: { color: '#161b22' }, ticks: { color: '#444' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
             });
         }
-        setInterval(updateLoop, 20000);
     </script>
 </body>
 </html>
