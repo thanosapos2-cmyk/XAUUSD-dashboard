@@ -2,137 +2,198 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <title>XAUUSD FINAL FIX v51.5</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <title>SMC PRO TERMINAL v51.6</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg: #050709; --panel: #0b1018; --gold: #f5c842; --green: #00e5a0; --red: #ff4060; --text: #c8d1d9; }
+        :root { --bg: #050709; --panel: #0b1018; --gold: #f5c842; --green: #00e5a0; --red: #ff4060; --text: #c8d1d9; --border: #1c2a3a; }
         body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
-        .main-layout { display: grid; grid-template-columns: 320px 1fr 300px; height: 100vh; }
-        .panel { background: var(--panel); padding: 20px; border: 0.5px solid #1c2a3a; overflow-y: auto; }
-        input { background: #161b22; border: 1px solid #1c2a3a; color: white; padding: 12px; width: 85%; margin-bottom: 10px; border-radius: 4px; font-family: monospace; }
-        button { background: var(--gold); color: black; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; }
-        .price-tag { font-family: 'Orbitron', sans-serif; font-size: 32px; color: var(--gold); }
-        #log-msg { font-size: 12px; padding: 10px; margin-top: 10px; border-radius: 4px; background: rgba(0,0,0,0.3); min-height: 20px; }
+        .main-layout { display: grid; grid-template-columns: 320px 1fr 300px; height: 100vh; gap: 1px; background: var(--border); }
+        .panel { background: var(--panel); padding: 15px; overflow-y: auto; border: 0.5px solid var(--border); position: relative; }
+        input { background: #161b22; border: 1px solid var(--border); color: white; padding: 10px; width: 85%; margin-bottom: 8px; border-radius: 4px; font-family: 'Share Tech Mono'; }
+        button { background: var(--gold); color: black; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; margin: 10px 0; }
+        .price-tag { font-family: 'Orbitron', sans-serif; font-size: 30px; color: var(--gold); text-shadow: 0 0 15px rgba(245,200,66,0.3); }
+        .smc-tag { padding: 8px; margin: 5px 0; border-radius: 4px; font-size: 12px; font-family: 'Share Tech Mono'; font-weight: bold; border-left: 4px solid #333; }
+        .supply { border-color: var(--red); color: var(--red); background: rgba(255, 64, 96, 0.05); }
+        .demand { border-color: var(--green); color: var(--green); background: rgba(0, 229, 160, 0.05); }
+        .tf-btn { background: #161b22; color: white; border: 1px solid var(--border); padding: 5px 10px; cursor: pointer; font-size: 11px; border-radius: 3px; margin-right: 5px; }
+        .tf-active { background: var(--gold); color: black; font-weight: bold; }
+        #log { font-size: 11px; padding: 5px; color: #666; font-family: monospace; }
     </style>
 </head>
 <body>
     <div class="main-layout">
         <div class="panel">
-            <h2 style="color:var(--gold); border-bottom: 1px solid #333;">CONNECTION</h2>
-            <label>API KEY</label>
-            <input type="text" id="api-key" placeholder="TwelveData Key...">
-            <label>SYMBOL</label>
+            <h3 style="color:var(--gold); border-bottom: 1px solid #333; padding-bottom: 5px;">CONTROL PANEL</h3>
+            <label style="font-size:10px">API KEY</label>
+            <input type="password" id="api-key" placeholder="TwelveData Key...">
+            <label style="font-size:10px">SYMBOL</label>
             <input type="text" id="symbol" value="XAU/USD">
-            <button onclick="connect()">ACTIVATE ALGO</button>
-            <div id="log-msg" style="color: #888;">System Ready.</div>
+            <label style="font-size:10px">PRICE OFFSET (e.g. 0.50 or -1.20)</label>
+            <input type="number" id="offset" value="0.00" step="0.01">
             
-            <div id="smc-zones" style="margin-top:20px;"></div>
+            <button onclick="startSystem()">SYNC & ACTIVATE</button>
+            <div id="log">Status: Idle</div>
+            
+            <div style="margin-top:20px;">
+                <h4 style="font-size:12px; color:var(--gold)">LIVE SMC ZONES</h4>
+                <div id="smc-list"></div>
+            </div>
         </div>
         
         <div class="panel" style="padding:0; position:relative; background:#000;">
             <div style="position:absolute; top:20px; right:20px; z-index:10; text-align:right;">
-                <div id="active-sym-title" style="color:var(--gold); font-size:12px;">XAU/USD</div>
-                <div id="live-price" class="price-tag">0.00</div>
+                <div id="disp-sym" style="color:var(--gold); font-size:12px;">XAU/USD</div>
+                <div id="live-price" class="price-tag">0.00000</div>
+            </div>
+            <div style="position:absolute; bottom:20px; left:20px; z-index:10;">
+                <button class="tf-btn tf-active" onclick="changeTF('5min', this)">M5</button>
+                <button class="tf-btn" onclick="changeTF('15min', this)">M15</button>
+                <button class="tf-btn" onclick="changeTF('1h', this)">H1</button>
             </div>
             <canvas id="mainChart"></canvas>
         </div>
 
         <div class="panel" style="text-align:center;">
-            <h2 style="color:var(--gold); border-bottom: 1px solid #333;">SIGNALS</h2>
-            <div id="h1-trend" style="font-size:18px; margin:20px 0; font-weight:bold;">TREND: --</div>
-            <div id="stars" style="font-size:30px; color:var(--gold);">☆☆☆☆☆</div>
+            <h3 style="color:var(--gold); border-bottom: 1px solid #333; padding-bottom: 5px;">ALGO ENGINE</h3>
+            <div style="font-size:11px; color:#666; margin-top:20px;">H1 TREND</div>
+            <div id="h1-trend" style="font-weight:bold; font-size:18px;">---</div>
+            <div style="font-size:11px; color:#666; margin-top:20px;">STRENGTH</div>
+            <div id="stars" style="font-size:28px; color:var(--gold);">☆☆☆☆☆</div>
             <div id="status" style="font-size:45px; font-weight:bold; margin:20px 0; color:#333;">WAIT</div>
-            <div id="signal-desc" style="font-size:13px; color:var(--gold);">Waiting for Data...</div>
+            <div id="msg" style="font-size:12px; color:var(--gold); padding:10px; border:1px solid #333; border-radius:5px;">Scanning Liquidity...</div>
         </div>
     </div>
 
     <script>
         let chart = null;
-        const alertSound = new Audio('https://actions.google.com/sounds/v1/notification/beep.ogg');
+        let state = {
+            tf: '5min',
+            lastPrice: 0,
+            decimal: 2
+        };
 
-        async function connect() {
+        const alertSnd = new Audio('https://actions.google.com/sounds/v1/notification/beep.ogg');
+
+        // Load saved settings
+        document.getElementById('api-key').value = localStorage.getItem('smc_key') || '';
+        document.getElementById('symbol').value = localStorage.getItem('smc_sym') || 'XAU/USD';
+
+        async function startSystem() {
             const key = document.getElementById('api-key').value.trim();
             const sym = document.getElementById('symbol').value.trim();
-            const log = document.getElementById('log-msg');
+            const log = document.getElementById('log');
 
-            if(!key) { log.innerText = "Error: Missing API Key"; return; }
-            
-            log.style.color = "var(--gold)";
-            log.innerText = "Connecting to " + sym + "...";
+            localStorage.setItem('smc_key', key);
+            localStorage.setItem('smc_sym', sym);
 
-            // Encode το σύμβολο για να αποφύγουμε προβλήματα με χαρακτήρες όπως / ή =
+            log.innerText = "Connecting...";
+            await updateLoop();
+            setInterval(updateLoop, 20000);
+        }
+
+        function changeTF(val, btn) {
+            state.tf = val;
+            document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('tf-active'));
+            btn.classList.add('tf-active');
+            updateLoop();
+        }
+
+        async function updateLoop() {
+            const key = document.getElementById('api-key').value;
+            const sym = document.getElementById('symbol').value;
+            const offset = parseFloat(document.getElementById('offset').value) || 0;
             const encodedSym = encodeURIComponent(sym);
-            const url = `https://api.twelvedata.com/time_series?symbol=${encodedSym}&interval=5min&apikey=${key}&outputsize=50`;
 
             try {
-                const response = await fetch(url);
-                const data = await response.json();
+                const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${encodedSym}&interval=${state.tf}&apikey=${key}&outputsize=50`);
+                const data = await res.json();
 
                 if(data.status === "error") {
-                    log.style.color = "var(--red)";
-                    log.innerText = "API Says: " + data.message;
+                    document.getElementById('log').innerText = "Error: " + data.message;
                     return;
                 }
 
-                if(!data.values) {
-                    log.style.color = "var(--red)";
-                    log.innerText = "Invalid data received. Check symbol.";
-                    return;
-                }
+                const candles = data.values.map(v => ({
+                    t: v.datetime.split(' ')[1],
+                    c: parseFloat(v.close) + offset,
+                    h: parseFloat(v.high) + offset,
+                    l: parseFloat(v.low) + offset
+                })).reverse();
 
-                log.style.color = "var(--green)";
-                log.innerText = "Connection Successful!";
+                // Detect Decimals (Forex vs Gold)
+                state.decimal = sym.includes("USD") && !sym.includes("XAU") ? 5 : 2;
                 
-                processData(data.values, sym);
-            } catch (e) {
-                log.style.color = "var(--red)";
-                log.innerText = "Network Error. Check connection.";
+                const last = candles[candles.length-1];
+                document.getElementById('live-price').innerText = last.c.toFixed(state.decimal);
+                document.getElementById('disp-sym').innerText = sym;
+                document.getElementById('log').innerText = "Status: Online";
+
+                renderChart(candles);
+                analyzeSMC(candles, last.c);
+                getH1Trend(sym, key, last.c);
+
+            } catch(e) { console.error(e); }
+        }
+
+        function analyzeSMC(candles, price) {
+            const zones = [];
+            for(let i=candles.length-15; i<candles.length-1; i++) {
+                if(candles[i].h > candles[i-1].h && candles[i].h > candles[i+1].h) zones.push({type:'SUPPLY', p: candles[i].h});
+                if(candles[i].l < candles[i-1].l && candles[i].l < candles[i+1].l) zones.push({type:'DEMAND', p: candles[i].l});
+            }
+
+            const list = document.getElementById('smc-list');
+            const recentZones = zones.slice(-4);
+            list.innerHTML = recentZones.map(z => `<div class="smc-tag ${z.type.toLowerCase()}">${z.type}: ${z.p.toFixed(state.decimal)}</div>`).join('');
+
+            let sig = 'WAIT';
+            recentZones.forEach(z => {
+                if(z.type === 'DEMAND' && price <= z.p + 0.05) sig = 'BUY';
+                if(z.type === 'SUPPLY' && price >= z.p - 0.05) sig = 'SELL';
+            });
+
+            const statusEl = document.getElementById('status');
+            statusEl.innerText = sig;
+            statusEl.style.color = sig === 'BUY' ? 'var(--green)' : (sig === 'SELL' ? 'var(--red)' : '#333');
+            
+            if(sig !== 'WAIT' && sig !== state.lastSig) {
+                alertSnd.play();
+                state.lastSig = sig;
             }
         }
 
-        function processData(values, sym) {
-            const candles = values.map(v => ({
-                t: v.datetime.split(' ')[1],
-                c: parseFloat(v.close),
-                h: parseFloat(v.high),
-                l: parseFloat(v.low)
-            })).reverse();
+        async function getH1Trend(sym, key, price) {
+            const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(sym)}&interval=1h&apikey=${key}&outputsize=5`);
+            const data = await res.json();
+            if(!data.values) return;
 
-            const last = candles[candles.length - 1];
-            document.getElementById('live-price').innerText = last.c.toFixed(2);
-            document.getElementById('active-sym-title').innerText = sym;
-            
-            updateChart(candles);
-            // Εδώ θα έρθει η SMC ανάλυση μόλις δουλέψει το γράφημα
-            document.getElementById('status').innerText = "LIVE";
-            document.getElementById('status').style.color = "var(--green)";
-            document.getElementById('signal-desc').innerText = "Market Analysis Active";
+            const isBull = parseFloat(data.values[0].close) > parseFloat(data.values[4].close);
+            const trendEl = document.getElementById('h1-trend');
+            trendEl.innerText = isBull ? '▲ BULLISH' : '▼ BEARISH';
+            trendEl.style.color = isBull ? 'var(--green)' : 'var(--red)';
+
+            const currentSig = document.getElementById('status').innerText;
+            if(currentSig !== 'WAIT') {
+                const align = (currentSig === 'BUY' && isBull) || (currentSig === 'SELL' && !isBull);
+                document.getElementById('stars').innerText = align ? '★★★★★' : '★★★☆☆';
+                document.getElementById('msg').innerText = align ? "HIGH PROBABILITY SETUP" : "COUNTER-TREND TRADE";
+            } else {
+                document.getElementById('stars').innerText = '☆☆☆☆☆';
+                document.getElementById('msg').innerText = "Scanning Liquidity...";
+            }
         }
 
-        function updateChart(candles) {
+        function renderChart(candles) {
             const ctx = document.getElementById('mainChart').getContext('2d');
             if(chart) chart.destroy();
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: candles.map(c => c.t),
-                    datasets: [{ 
-                        data: candles.map(c => c.c), 
-                        borderColor: '#f5c842', 
-                        borderWidth: 2, 
-                        pointRadius: 0,
-                        tension: 0.1 
-                    }]
+                    datasets: [{ data: candles.map(c => c.c), borderColor: '#f5c842', pointRadius: 0, borderWidth: 2, tension: 0.1 }]
                 },
-                options: { 
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { 
-                        x: { display: false }, 
-                        y: { grid: { color: '#1c2a3a' }, ticks: { color: '#666' } } 
-                    }
-                }
+                options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: '#1c2a3a' }, ticks: { color: '#666' } } } }
             });
         }
     </script>
