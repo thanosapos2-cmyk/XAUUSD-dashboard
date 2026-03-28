@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>XAUUSD Pro System | Twelvedata Live Candles</title>
+<title>XAUUSD Pro System | Live Price + Twelvedata</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -78,6 +78,11 @@ body {
   font-size: 18px;
   font-weight: 700;
   color: var(--gold);
+}
+.price-change {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  margin-left: 8px;
 }
 .tabs {
   display: flex;
@@ -263,9 +268,9 @@ body {
 @media(max-width: 1000px) {
   .ind-grid { grid-template-columns: repeat(4, 1fr); }
   .stat-row { grid-template-columns: repeat(2, 1fr); }
-  .grid2 { grid-template-columns: 1fr; }
   .signal-grid { grid-template-columns: repeat(2, 1fr); }
 }
+.tv-widget-container { min-width: 180px; }
 </style>
 </head>
 <body>
@@ -273,11 +278,29 @@ body {
 <header class="header">
   <div>
     <div class="logo">XAU/USD PRO</div>
-    <div class="logo-sub">TWELVEDATA · LIVE CANDLES</div>
+    <div class="logo-sub">LIVE OANDA PRICE + TWELVEDATA CANDLES</div>
   </div>
   <div class="header-right">
+    <!-- TradingView Widget for accurate OANDA price -->
+    <div id="tv-widget" style="min-width: 200px;">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async defer>
+        {
+          "symbol": "OANDA:XAUUSD",
+          "width": "100%",
+          "colorTheme": "dark",
+          "isTransparent": true,
+          "locale": "en"
+        }
+        </script>
+      </div>
+    </div>
     <div class="live-badge"><div class="pulse"></div>LIVE</div>
-    <div class="price-display" id="header-price">---</div>
+    <div>
+      <div class="price-display" id="header-price">---</div>
+      <div class="price-change" id="price-change"></div>
+    </div>
   </div>
 </header>
 
@@ -292,15 +315,15 @@ body {
 <div id="tab-overview" class="panel active">
   <div class="sh"><div class="sh-title">XAUUSD MARKET OVERVIEW</div><div class="sh-line"></div></div>
   <div class="stat-row">
+    <div class="stat-card"><div class="stat-label">LIVE PRICE</div><div class="stat-val gold" id="live-price-val">---</div></div>
     <div class="stat-card"><div class="stat-label">WIN RATE</div><div class="stat-val green">89%</div></div>
     <div class="stat-card"><div class="stat-label">MAX DD</div><div class="stat-val gold">5.0%</div></div>
     <div class="stat-card"><div class="stat-label">PROFIT FACTOR</div><div class="stat-val green">3.21</div></div>
-    <div class="stat-card"><div class="stat-label">CANDLES</div><div class="stat-val blue" id="candle-count">0</div></div>
   </div>
 
   <div class="sh"><div class="sh-title">🎯 CURRENT SIGNAL</div><div class="sh-line"></div></div>
   <div class="signal-box" id="signal-status-box">
-    <div style="text-align:center;padding:20px">Φόρτωση δεδομένων από Twelvedata...</div>
+    <div style="text-align:center;padding:20px">Φόρτωση δεδομένων...</div>
   </div>
 
   <div class="sh"><div class="sh-title">TIMEFRAMES</div><div class="sh-line"></div></div>
@@ -360,7 +383,7 @@ body {
       <div style="margin-top:10px">SL PIPS: <input type="number" id="bt-sl" value="20" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px;width:100%"></div>
       <div style="margin-top:10px">TP PIPS: <input type="number" id="bt-tp" value="40" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px;width:100%"></div>
       <div style="margin-top:10px">TIMEFRAME: 
-        <select id="bt-tf" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px">
+        <select id="bt-tf" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px;width:100%">
           <option>M5</option><option>M15</option><option>M30</option><option>H1</option>
         </select>
       </div>
@@ -413,7 +436,64 @@ let activeTF = 'M5';
 let signalTF = 'M5';
 let lastAlert = null;
 let alertsEnabled = false;
-let currentPrice = null;
+let livePrice = null;
+let lastPrice = null;
+
+// ============================================================
+// READ LIVE PRICE FROM TRADINGVIEW WIDGET
+// ============================================================
+function startTVPriceReader() {
+  setInterval(() => {
+    try {
+      const widget = document.querySelector('.tradingview-widget-container iframe');
+      if (!widget) return;
+      
+      // Alternative: read from the container text
+      const container = document.querySelector('.tradingview-widget-container__widget');
+      if (container && container.textContent) {
+        const text = container.textContent;
+        const match = text.match(/(\d{1,3},\d{3}\.\d{2})|(\d{4}\.\d{2})/);
+        if (match) {
+          const price = parseFloat(match[0].replace(/,/g, ''));
+          if (price > 1000 && price < 20000) {
+            updateLivePrice(price);
+          }
+        }
+      }
+      
+      // Also try to find any element with price
+      const allElements = document.querySelectorAll('*');
+      for (let el of allElements) {
+        const text = el.textContent;
+        if (text && /^\d{4}\.\d{2}$/.test(text.trim())) {
+          const price = parseFloat(text);
+          if (price > 1000 && price < 20000 && price !== livePrice) {
+            updateLivePrice(price);
+            break;
+          }
+        }
+      }
+    } catch(e) {}
+  }, 1000);
+}
+
+function updateLivePrice(price) {
+  if (price === livePrice) return;
+  livePrice = price;
+  document.getElementById('live-price-val').textContent = price.toFixed(2);
+  document.getElementById('header-price').textContent = price.toFixed(2);
+  
+  if (lastPrice) {
+    const change = price - lastPrice;
+    const changeEl = document.getElementById('price-change');
+    changeEl.textContent = (change >= 0 ? '▲' : '▼') + Math.abs(change).toFixed(2);
+    changeEl.style.color = change >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+  lastPrice = price;
+  
+  // Update signal if needed
+  updateSignals();
+}
 
 // ============================================================
 // FETCH CANDLES FROM TWELVEDATA
@@ -454,14 +534,6 @@ async function fetchCandles(tf) {
     }));
     
     candleCache[tf] = { candles, ts: now };
-    
-    // Update current price
-    if (candles.length > 0) {
-      currentPrice = candles[candles.length-1].close;
-      document.getElementById('header-price').textContent = currentPrice.toFixed(2);
-      document.getElementById('candle-count').textContent = candles.length;
-    }
-    
     return candles;
   } catch(e) {
     console.error('Fetch error:', e);
@@ -551,7 +623,7 @@ function analyzeCandles(candles) {
   const closes = candles.map(c => c.close);
   const highs = candles.map(c => c.high);
   const lows = candles.map(c => c.low);
-  const price = closes[closes.length-1];
+  const price = livePrice || closes[closes.length-1];
   
   const rsi = calcRSI(closes, 14);
   const ema9 = calcEMA(closes, 9);
@@ -578,7 +650,7 @@ function analyzeCandles(candles) {
 }
 
 // ============================================================
-// SIGNAL UPDATE
+// SIGNAL UPDATE (USES LIVE PRICE FROM TV)
 // ============================================================
 async function updateSignals() {
   const candles = await fetchCandles(signalTF);
@@ -601,7 +673,7 @@ async function updateSignals() {
   const slPips = Math.max(12, atrSL);
   const tpPips = slPips * 2;
   
-  const entry = currentPrice || analysis.price;
+  const entry = livePrice || analysis.price;
   const sl = analysis.direction === 'BUY' ? entry - slPips : entry + slPips;
   const tp = analysis.direction === 'BUY' ? entry + tpPips : entry - tpPips;
   
@@ -615,8 +687,8 @@ async function updateSignals() {
     <div style="font-size:16px;font-weight:700;color:${analysis.direction === 'BUY' ? 'var(--green)' : analysis.direction === 'SELL' ? 'var(--red)' : 'var(--blue)'}">
       ${analysis.direction} SIGNAL
     </div>
-    <div style="margin-top:8px">RSI: ${analysis.rsi.toFixed(1)} | ADX: ${analysis.adx.toFixed(1)}</div>
-    <div>Score: ${analysis.score}% | Confidence: ${analysis.score >= 75 ? 'HIGH' : analysis.score >= 60 ? 'MEDIUM' : 'LOW'}</div>
+    <div style="margin-top:8px">RSI: ${analysis.rsi.toFixed(1)} | ADX: ${analysis.adx.toFixed(1)} | ATR: ${analysis.atr.toFixed(2)}</div>
+    <div>Score: ${analysis.score}% | ${analysis.score >= 75 ? 'HIGH CONFIDENCE' : analysis.score >= 60 ? 'MEDIUM CONFIDENCE' : 'LOW CONFIDENCE'}</div>
   `;
   
   // Update indicators grid
@@ -640,190 +712,8 @@ async function updateSignals() {
   `).join('');
   
   // Check alert
-  if (alertsEnabled && analysis.score >= parseInt(document.getElementById('min-score-slider')?.value || 70)) {
+  if (alertsEnabled && livePrice && analysis.score >= parseInt(document.getElementById('min-score-slider')?.value || 70)) {
     const alertKey = analysis.direction + '_' + signalTF;
     if (alertKey !== lastAlert) {
       lastAlert = alertKey;
-      sendTelegramAlert(analysis.direction, signalTF, entry.toFixed(2), sl.toFixed(2), tp.toFixed(2), analysis.score);
-      const log = document.getElementById('alert-log');
-      const time = new Date().toLocaleTimeString();
-      log.innerHTML = `<div>✅ ${time} - ${analysis.direction} ${signalTF} @ ${entry.toFixed(2)} (${analysis.score}%)</div>` + log.innerHTML;
-    }
-  }
-}
-
-// ============================================================
-// BACKTEST
-// ============================================================
-async function runBacktest() {
-  const capital = parseFloat(document.getElementById('bt-cap').value) || 10000;
-  const slPips = parseFloat(document.getElementById('bt-sl').value) || 20;
-  const tpPips = parseFloat(document.getElementById('bt-tp').value) || 40;
-  const tf = document.getElementById('bt-tf').value;
-  
-  const candles = await fetchCandles(tf);
-  if (!candles || candles.length < 50) {
-    alert('Ανεπαρκή δεδομένα για backtest. Χρειάζονται τουλάχιστον 50 κεριά.');
-    return;
-  }
-  
-  const trades = [];
-  let equity = capital;
-  let inTrade = false;
-  let entryPrice = 0, direction = '', sl = 0, tp = 0;
-  
-  for (let i = 30; i < candles.length; i++) {
-    const candle = candles[i];
-    const closes = candles.slice(0, i+1).map(c => c.close);
-    const highs = candles.slice(0, i+1).map(c => c.high);
-    const lows = candles.slice(0, i+1).map(c => c.low);
-    
-    if (!inTrade) {
-      const rsi = calcRSI(closes, 14);
-      const ema9 = calcEMA(closes, 9);
-      const ema21 = calcEMA(closes, 21);
-      const ema50 = calcEMA(closes, 50);
-      const macd = calcMACD(closes);
-      
-      let score = 0;
-      if (ema9 > ema21 && ema21 > ema50) score += 35;
-      else if (ema9 < ema21 && ema21 < ema50) score -= 35;
-      if (rsi > 55 && rsi < 70) score += 20;
-      else if (rsi < 45 && rsi > 30) score -= 20;
-      if (macd.hist > 0) score += 25;
-      else if (macd.hist < 0) score -= 25;
-      
-      if (Math.abs(score) >= 65) {
-        inTrade = true;
-        direction = score > 0 ? 'BUY' : 'SELL';
-        entryPrice = candle.close;
-        sl = direction === 'BUY' ? entryPrice - slPips : entryPrice + slPips;
-        tp = direction === 'BUY' ? entryPrice + tpPips : entryPrice - tpPips;
-      }
-    } else {
-      let closed = false;
-      let pnl = 0;
-      if (direction === 'BUY') {
-        if (candle.low <= sl) { pnl = -slPips; closed = true; }
-        else if (candle.high >= tp) { pnl = tpPips; closed = true; }
-      } else {
-        if (candle.high >= sl) { pnl = -slPips; closed = true; }
-        else if (candle.low <= tp) { pnl = tpPips; closed = true; }
-      }
-      if (closed) {
-        equity += pnl;
-        trades.push({ direction, entry: entryPrice, exit: candle.close, pnl, win: pnl > 0 });
-        inTrade = false;
-      }
-    }
-  }
-  
-  if (trades.length === 0) {
-    alert('Κανένα trade. Μείωσε το threshold ή περίμενε περισσότερα δεδομένα.');
-    return;
-  }
-  
-  const wins = trades.filter(t => t.win).length;
-  const profit = equity - capital;
-  const winRate = (wins / trades.length * 100).toFixed(1);
-  
-  document.getElementById('bt-results').style.display = 'block';
-  document.getElementById('bt-placeholder').style.display = 'none';
-  document.getElementById('r-profit').textContent = (profit >= 0 ? '+' : '') + '$' + Math.abs(profit).toFixed(0);
-  document.getElementById('r-wr').textContent = winRate + '%';
-  document.getElementById('r-trades').textContent = trades.length;
-  
-  const logDiv = document.getElementById('bt-log');
-  logDiv.innerHTML = trades.slice(-15).reverse().map(t => 
-    `<div style="border-bottom:1px solid var(--border);padding:5px 0">
-      ${t.direction} @ ${t.entry.toFixed(2)} → ${t.exit.toFixed(2)} | ${t.pnl >= 0 ? '+' : ''}${t.pnl} pips | ${t.win ? '✅ WIN' : '❌ LOSS'}
-    </div>`
-  ).join('');
-}
-
-// ============================================================
-// TELEGRAM ALERTS
-// ============================================================
-const TG_TOKEN = '8329064212:AAFWr7yycS9pvk3Mh65EBmIh9azQA6Dz80g';
-const TG_CHAT = '1914782302';
-
-async function sendTelegramAlert(dir, tf, entry, sl, tp, score) {
-  const emoji = dir === 'BUY' ? '🟢' : '🔴';
-  const msg = `${emoji} <b>${dir} SIGNAL</b>\n⏱ ${tf}\n📍 Entry: ${entry}\n🛑 SL: ${sl}\n🎯 TP: ${tp}\n🔥 Score: ${score}%`;
-  try {
-    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: TG_CHAT, text: msg, parse_mode: 'HTML' })
-    });
-  } catch(e) {}
-}
-
-async function sendTestAlert() {
-  await sendTelegramAlert('BUY', 'M5', '3200.00', '3190.00', '3220.00', 85);
-  const log = document.getElementById('alert-log');
-  log.innerHTML = `<div>🧪 Test alert sent at ${new Date().toLocaleTimeString()}</div>` + log.innerHTML;
-}
-
-function toggleAlerts() {
-  alertsEnabled = !alertsEnabled;
-  const btn = document.getElementById('btn-alerts-toggle');
-  const status = document.getElementById('alerts-status');
-  if (alertsEnabled) {
-    btn.textContent = '🔔 ALERTS ON — ΑΠΕΝΕΡΓΟΠΟΙΗΣΗ';
-    status.innerHTML = '✅ ΕΝΕΡΓΑ';
-    status.style.color = 'var(--green)';
-  } else {
-    btn.textContent = '🔕 ALERTS OFF — ΕΝΕΡΓΟΠΟΙΗΣΗ';
-    status.innerHTML = '❌ ΑΝΕΝΕΡΓΑ';
-    status.style.color = 'var(--red)';
-  }
-}
-
-// ============================================================
-// UI HELPERS
-// ============================================================
-function showTab(id, el) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + id).classList.add('active');
-  el.classList.add('active');
-  if (id === 'signals') updateSignals();
-}
-
-function setActiveTF(tf) {
-  activeTF = tf;
-  document.querySelectorAll('#tab-overview .tf-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelector(`#tab-overview .tf-btn[data-tf="${tf}"]`).classList.add('active');
-  fetchCandles(tf).then(candles => {
-    if (candles) {
-      const analysis = analyzeCandles(candles);
-      if (analysis) {
-        document.getElementById('signal-status-box').innerHTML = `
-          <div style="font-size:24px;font-weight:900;color:${analysis.direction === 'BUY' ? 'var(--green)' : analysis.direction === 'SELL' ? 'var(--red)' : 'var(--blue)'}">
-            ${analysis.direction}
-          </div>
-          <div>Score: ${analysis.score}% | RSI: ${analysis.rsi.toFixed(1)} | ATR: ${analysis.atr.toFixed(2)}</div>
-        `;
-      }
-    }
-  });
-}
-
-function setSignalTF(tf) {
-  signalTF = tf;
-  document.querySelectorAll('#tab-signals .tf-btn').forEach(btn => btn.classList.remove('active'));
-  document.querySelector(`#tab-signals .tf-btn[data-tf="${tf}"]`).classList.add('active');
-  updateSignals();
-}
-
-// ============================================================
-// INIT
-// ============================================================
-setActiveTF('M5');
-setSignalTF('M5');
-setInterval(() => { if (document.visibilityState === 'visible') updateSignals(); }, 10000);
-setTimeout(updateSignals, 1000);
-</script>
-</body>
-</html>
+      sendTelegramAlert
