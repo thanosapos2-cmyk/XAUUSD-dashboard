@@ -2,198 +2,118 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XAUUSD PRO ELITE v51.2 | WORKING</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+    <title>XAUUSD ULTIMATE v51.3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --bg: #050709; --panel: #0b1018; --gold: #f5c842; --green: #00e5a0; --red: #ff4060; --text: #c8d1d9; --border: #1c2a3a; }
         body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
         .main-layout { display: grid; grid-template-columns: 320px 1fr 300px; height: 100vh; }
-        .panel { background: var(--panel); padding: 15px; border: 0.5px solid var(--border); position: relative; overflow-y: auto; }
-        input { background: #161b22; border: 1px solid var(--border); color: white; padding: 10px; width: 90%; margin-bottom: 10px; border-radius: 4px; display: block; }
-        button { background: var(--gold); color: black; border: none; padding: 12px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; margin-bottom: 10px; transition: 0.3s; }
-        button:hover { opacity: 0.8; transform: scale(0.98); }
-        .price-tag { font-family: 'Orbitron', sans-serif; font-size: 28px; color: var(--gold); text-align: right; }
-        .smc-tag { padding: 8px; margin: 5px 0; border-radius: 4px; font-size: 13px; font-weight: bold; font-family: monospace; }
-        .supply { background: rgba(255, 64, 96, 0.1); border-left: 4px solid var(--red); color: var(--red); }
-        .demand { background: rgba(0, 229, 160, 0.1); border-left: 4px solid var(--green); color: var(--green); }
-        .tf-btn { background: #161b22; color: white; border: 1px solid var(--border); padding: 8px; cursor: pointer; width: 60px; font-size: 11px; margin-right: 5px; display: inline-block; }
-        .tf-active { background: var(--gold); color: black; border-color: var(--gold); }
-        #strength-stars { font-size: 30px; color: var(--gold); margin: 10px 0; }
+        .panel { background: var(--panel); padding: 15px; border: 0.5px solid var(--border); overflow-y: auto; }
+        input { background: #161b22; border: 1px solid var(--border); color: white; padding: 12px; width: 85%; margin-bottom: 10px; border-radius: 4px; font-family: monospace; }
+        button { background: var(--gold); color: black; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 4px; text-transform: uppercase; }
+        .price-tag { font-family: 'Orbitron', sans-serif; font-size: 32px; color: var(--gold); text-shadow: 0 0 10px rgba(245,200,66,0.3); }
+        .smc-tag { padding: 10px; margin: 8px 0; border-radius: 4px; font-size: 14px; font-weight: bold; border-left: 4px solid #333; background: rgba(255,255,255,0.03); }
+        .supply { border-color: var(--red); color: var(--red); }
+        .demand { border-color: var(--green); color: var(--green); }
         canvas { width: 100% !important; height: 100% !important; }
     </style>
 </head>
 <body>
     <div class="main-layout">
         <div class="panel">
-            <h3 style="border-bottom: 2px solid var(--gold); padding-bottom: 10px;">CONTROL PANEL</h3>
-            <label style="font-size: 11px; color: #666;">TWELVEDATA KEY</label>
-            <input type="password" id="api-key-input" placeholder="Paste API Key...">
-            <label style="font-size: 11px; color: #666;">SYMBOL</label>
-            <input type="text" id="symbol-input" value="XAU/USD">
-            <button onclick="initSystem()">CONNECT & ACTIVATE</button>
+            <h2 style="color:var(--gold); border-bottom: 1px solid #333;">CONFIG</h2>
+            <label>API KEY</label>
+            <input type="text" id="api-key" placeholder="Enter TwelveData Key...">
+            <label>SYMBOL</label>
+            <input type="text" id="symbol" value="XAUUSD">
+            <button onclick="start()">ACTIVATE SYSTEM</button>
             <div id="smc-list" style="margin-top:20px;"></div>
         </div>
         
-        <div class="panel" style="padding:0; overflow:hidden; background: #000;">
-            <div style="position:absolute; top:20px; right:20px; z-index:10; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px;">
-                <div id="active-sym" style="color:var(--gold); text-align:right; font-size: 12px;">XAU/USD</div>
+        <div class="panel" style="padding:0; position:relative; background:#000;">
+            <div style="position:absolute; top:20px; right:20px; z-index:10; text-align:right;">
+                <div id="cur-sym" style="color:var(--gold); font-size:12px;">XAUUSD</div>
                 <div id="live-price" class="price-tag">0.00</div>
-            </div>
-            <div style="position:absolute; bottom:20px; left:20px; z-index:10;">
-                <button class="tf-btn tf-active" onclick="changeTF('5min', this)">M5</button>
-                <button class="tf-btn" onclick="changeTF('15min', this)">M15</button>
-                <button class="tf-btn" onclick="changeTF('1h', this)">H1</button>
             </div>
             <canvas id="mainChart"></canvas>
         </div>
 
         <div class="panel" style="text-align:center;">
-            <h3 style="border-bottom: 2px solid var(--gold); padding-bottom: 10px;">ALGO SIGNALS</h3>
-            <div style="font-size:12px; color:#666;">H1 TREND DIRECTION</div>
-            <div id="h1-trend" style="font-weight:bold; font-size:20px; margin-bottom:20px;">---</div>
-            <div style="font-size:12px; color:#666;">SIGNAL STRENGTH</div>
-            <div id="strength-stars">☆☆☆☆☆</div>
-            <div id="sig-status" style="font-size:40px; font-weight:bold; margin:20px 0; letter-spacing: 2px;">WAIT</div>
-            <div id="sig-reason" style="font-size:13px; color:var(--gold); background: rgba(245,200,66,0.1); padding: 10px; border-radius: 5px;">Initializing...</div>
+            <h2 style="color:var(--gold); border-bottom: 1px solid #333;">SIGNALS</h2>
+            <div id="h1-trend" style="font-size:20px; margin:20px 0;">TREND: --</div>
+            <div id="stars" style="font-size:30px; color:var(--gold);">☆☆☆☆☆</div>
+            <div id="status" style="font-size:50px; font-weight:bold; margin:20px 0;">WAIT</div>
+            <div id="msg" style="color:var(--gold); font-size:14px; padding:10px; border:1px solid #333;">System Offline</div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        let state = {
-            key: localStorage.getItem('xau_api') || '',
-            symbol: localStorage.getItem('xau_sym') || 'XAU/USD',
-            tf: '5min',
-            chart: null,
-            lastSig: '',
-            audioEnabled: false
-        };
+        let chart = null;
+        const alertSnd = new Audio('https://actions.google.com/sounds/v1/notification/beep.ogg');
 
-        const alertSound = new Audio('https://actions.google.com/sounds/v1/notification/beep.ogg');
-
-        // Load saved data
-        document.getElementById('api-key-input').value = state.key;
-        document.getElementById('symbol-input').value = state.symbol;
-
-        function initSystem() {
-            state.key = document.getElementById('api-key-input').value;
-            state.symbol = document.getElementById('symbol-input').value;
-            localStorage.setItem('xau_api', state.key);
-            localStorage.setItem('xau_sym', state.symbol);
-            state.audioEnabled = true;
-            alertSound.play().catch(e => console.log("Audio waiting for interaction"));
-            updateLoop();
-        }
-
-        function changeTF(val, btn) {
-            state.tf = val;
-            document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('tf-active'));
-            btn.classList.add('tf-active');
-            updateLoop();
-        }
-
-        async function updateLoop() {
-            if(!state.key) return;
+        async function start() {
+            const key = document.getElementById('api-key').value.trim();
+            const sym = document.getElementById('symbol').value.trim();
+            if(!key) return alert("Please enter API Key");
+            
+            localStorage.setItem('saved_key', key);
+            document.getElementById('msg').innerText = "Connecting to Market...";
+            
             try {
-                const response = await fetch(`https://api.twelvedata.com/time_series?symbol=${state.symbol}&interval=${state.tf}&apikey=${state.key}&outputsize=50`);
-                const data = await response.json();
-                
-                if(!data.values) {
-                    document.getElementById('sig-reason').innerText = "API Error: Check Key or Symbol";
+                const url = `https://api.twelvedata.com/time_series?symbol=${sym}&interval=5min&apikey=${key}&outputsize=50`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if(data.status === "error") {
+                    document.getElementById('msg').innerText = "API Error: " + data.message;
                     return;
                 }
 
                 const candles = data.values.map(v => ({
-                    t: v.datetime, c: parseFloat(v.close), h: parseFloat(v.high), l: parseFloat(v.low), o: parseFloat(v.open)
+                    t: v.datetime.split(' ')[1],
+                    c: parseFloat(v.close),
+                    h: parseFloat(v.high),
+                    l: parseFloat(v.low)
                 })).reverse();
 
-                const lastPrice = candles[candles.length-1].c;
-                document.getElementById('live-price').innerText = lastPrice.toFixed(2);
-                document.getElementById('active-sym').innerText = state.symbol;
-
-                // SMC Analysis
-                const zones = [];
-                for(let i=5; i < candles.length-2; i++) {
-                    if(candles[i].h > candles[i-1].h && candles[i].h > candles[i+1].h) zones.push({type:'SUPPLY', p: candles[i].h});
-                    if(candles[i].l < candles[i-1].l && candles[i].l < candles[i+1].l) zones.push({type:'DEMAND', p: candles[i].l});
-                }
-                
-                const list = document.getElementById('smc-list');
-                const lastZones = zones.slice(-4);
-                list.innerHTML = lastZones.map(z => `<div class="smc-tag ${z.type.toLowerCase()}">${z.type}: ${z.p.toFixed(2)}</div>`).join('');
-
-                updateChart(candles);
-                processSignals(lastPrice, lastZones);
-            } catch(error) {
-                console.error("Critical Error:", error);
+                updateUI(candles, sym);
+                document.getElementById('msg').innerText = "LIVE DATA ACTIVE";
+            } catch(e) {
+                document.getElementById('msg').innerText = "Connection Failed";
             }
         }
 
-        async function processSignals(price, zones) {
-            // Trend H1 Fetch
-            const resH1 = await fetch(`https://api.twelvedata.com/time_series?symbol=${state.symbol}&interval=1h&apikey=${state.key}&outputsize=5`);
-            const dataH1 = await resH1.json();
-            const isBullish = dataH1.values ? parseFloat(dataH1.values[0].close) > parseFloat(dataH1.values[4].close) : true;
-            
-            const trendEl = document.getElementById('h1-trend');
-            trendEl.innerText = isBullish ? '▲ BULLISH' : '▼ BEARISH';
-            trendEl.style.color = isBullish ? 'var(--green)' : 'var(--red)';
+        function updateUI(candles, sym) {
+            const last = candles[candles.length-1];
+            document.getElementById('live-price').innerText = last.c.toFixed(2);
+            document.getElementById('cur-sym').innerText = sym;
 
-            let signal = 'WAIT';
-            zones.forEach(z => {
-                if(z.type === 'DEMAND' && price <= z.p + 0.3) signal = 'BUY';
-                if(z.type === 'SUPPLY' && price >= z.p - 0.3) signal = 'SELL';
-            });
-
-            const statusEl = document.getElementById('sig-status');
-            statusEl.innerText = signal;
-            statusEl.style.color = signal === 'BUY' ? 'var(--green)' : (signal === 'SELL' ? 'var(--red)' : '#444');
-            
-            if(signal !== 'WAIT') {
-                const strength = (signal === 'BUY' && isBullish) || (signal === 'SELL' && !isBullish) ? '★★★★★' : '★★★☆☆';
-                document.getElementById('strength-stars').innerText = strength;
-                document.getElementById('sig-reason').innerText = "INSTITUTIONAL LEVEL REACHED";
-                if(state.lastSig !== signal && state.audioEnabled) {
-                    alertSound.play();
-                    state.lastSig = signal;
-                }
-            } else {
-                document.getElementById('strength-stars').innerText = '☆☆☆☆☆';
-                document.getElementById('sig-reason').innerText = "Scanning Order Flow...";
-            }
-        }
-
-        function updateChart(candles) {
+            // Simple Chart
             const ctx = document.getElementById('mainChart').getContext('2d');
-            if(state.chart) state.chart.destroy();
-            state.chart = new Chart(ctx, {
+            if(chart) chart.destroy();
+            chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: candles.map(c => c.t.split(' ')[1]),
-                    datasets: [{ 
-                        data: candles.map(c => c.c), 
-                        borderColor: '#f5c842', 
-                        borderWidth: 2, 
-                        pointRadius: 0,
-                        fill: false,
-                        tension: 0.1
-                    }]
+                    labels: candles.map(c => c.t),
+                    datasets: [{ data: candles.map(c => c.c), borderColor: '#f5c842', pointRadius: 0, borderWidth: 2 }]
                 },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    animation: false,
-                    scales: { 
-                        x: { display: false }, 
-                        y: { grid: { color: '#1c2a3a' }, ticks: { color: '#666' } } 
-                    },
-                    plugins: { legend: { display: false } }
-                }
+                options: { maintainAspectRatio: false, scales: { x: { display: false }, y: { grid: { color: '#1c2a3a' } } } }
             });
+
+            // SMC Zones
+            const list = document.getElementById('smc-list');
+            list.innerHTML = "";
+            for(let i=candles.length-10; i<candles.length-1; i++) {
+                if(candles[i].h > candles[i-1].h && candles[i].h > candles[i+1].h) {
+                    list.innerHTML += `<div class="smc-tag supply">SUPPLY: ${candles[i].h.toFixed(2)}</div>`;
+                }
+            }
         }
 
-        setInterval(updateLoop, 30000); // 30 sec updates to save API credits
+        // Auto-load if key exists
+        const saved = localStorage.getItem('saved_key');
+        if(saved) { document.getElementById('api-key').value = saved; }
     </script>
 </body>
 </html>
