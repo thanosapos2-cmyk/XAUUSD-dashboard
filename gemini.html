@@ -6,227 +6,197 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #020406; --card: #0a0e14; --border: #1a222d;
-            --gold: #f5c842; --green: #00ffaa; --red: #ff3355; --text: #e0e6ed; --muted: #607080;
+            --bg: #030508; --card: #0d1117; --border: #1f2937;
+            --gold: #f5c842; --green: #00f291; --red: #ff385c; --text: #e2e8f0; --muted: #64748b;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; padding: 20px; }
+        body { background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; padding: 15px; }
 
         /* HEADER */
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 20px; }
-        .logo { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 900; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; }
-        .live-info { display: flex; gap: 30px; text-align: right; }
-        .val { font-family: 'Orbitron', sans-serif; font-size: 24px; font-weight: 700; display: block; }
-        .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 20px; border-left: 4px solid var(--gold); }
+        .logo { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 900; color: var(--gold); letter-spacing: 2px; }
+        .price-engine { text-align: right; }
+        .live-price { font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 700; color: var(--text); }
+        .tick-meta { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
 
         /* GRID */
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; transition: 0.3s; }
-        .tf-label { font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--gold); margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; position: relative; }
+        .tf-tag { position: absolute; top: 15px; right: 15px; font-family: 'Orbitron'; color: var(--gold); font-size: 14px; font-weight: 700; opacity: 0.5; }
 
         /* TABLE */
-        .stats-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .stats-table td { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.02); font-size: 12px; }
-        .indicator-name { color: var(--muted); }
-        .indicator-status { text-align: right; font-weight: bold; }
+        .smc-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        .smc-table td { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 12px; }
+        .ind-label { color: var(--muted); }
+        .ind-status { text-align: right; font-weight: bold; }
 
-        /* SIGNALS */
-        .decision-box { padding: 15px; border-radius: 8px; text-align: center; background: rgba(255,255,255,0.03); border: 1px dashed var(--border); }
-        .decision-box.BUY { border: 2px solid var(--green); background: rgba(0,255,170,0.05); }
-        .decision-box.SELL { border: 2px solid var(--red); background: rgba(255,51,85,0.05); }
+        /* DECISION */
+        .decision-panel { padding: 15px; border-radius: 6px; text-align: center; background: rgba(0,0,0,0.2); border: 1px solid var(--border); margin-top: auto; }
+        .decision-panel.BUY { border-color: var(--green); background: rgba(0,242,145,0.03); }
+        .decision-panel.SELL { border-color: var(--red); background: rgba(255,56,92,0.03); }
         
-        .signal-title { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 900; margin-bottom: 10px; }
+        .signal-title { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 900; margin-bottom: 10px; color: var(--muted); }
         .BUY .signal-title { color: var(--green); }
         .SELL .signal-title { color: var(--red); }
-        
-        .targets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-        .t-item { background: #000; padding: 8px; border-radius: 4px; border: 1px solid var(--border); }
-        .t-lbl { font-size: 8px; color: var(--muted); display: block; margin-bottom: 3px; }
-        .t-val { font-size: 11px; font-weight: bold; }
 
-        /* WIDGET CONTAINER */
-        #scraper-container { position: fixed; bottom: 0; right: 0; width: 200px; height: 60px; z-index: -100; opacity: 0.01; overflow: hidden; }
+        .targets { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .target-box { background: #000; padding: 8px; border-radius: 4px; border: 1px solid var(--border); }
+        .t-lbl { font-size: 8px; color: var(--muted); display: block; margin-bottom: 3px; }
+        .t-val { font-size: 11px; font-weight: bold; color: #fff; }
+
+        .loading-text { font-size: 11px; color: var(--gold); font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <div class="logo">XAUUSD PURE SMC</div>
-    <div class="live-info">
-        <div><span class="lbl">Price (Scraped)</span><span id="price-display" class="val">---</span></div>
-        <div><span class="lbl">Ticks Stored</span><span id="ticks-display" class="val">0</span></div>
+    <div class="logo">XAUUSD STRICT SMC</div>
+    <div class="price-engine">
+        <div id="price" class="live-price">LOADING...</div>
+        <div class="tick-meta">Ticks Stored: <span id="tick-count">0</span> / 200,000</div>
     </div>
 </div>
 
-<div class="grid" id="main-grid"></div>
-
-<div id="scraper-container">
-    <div class="tradingview-widget-container" id="tv-widget">
-        <div class="tradingview-widget-container__widget"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
-        { "symbol": "FX_IDC:XAUUSD", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "en" }
-        </script>
-    </div>
-</div>
+<div class="grid" id="dashboard"></div>
 
 <script>
-// --- CONFIGURATION ---
+// --- CORE CONFIG ---
 const MAX_TICKS = 200000;
-let ticks = [];
-const timeframes = ['M1', 'M3', 'M5', 'M15', 'M30', 'M45', 'H1'];
-const tfSeconds = { M1: 60, M3: 180, M5: 300, M15: 900, M30: 1800, M45: 2700, H1: 3600 };
+let tickHistory = [];
+const timeframes = ['M1', 'M5', 'M15', 'M30', 'H1'];
+const tfSeconds = { M1: 60, M5: 300, M15: 900, M30: 1800, H1: 3600 };
 
-// --- DOM SCRAPER (ΒΡΙΣΚΕΙ ΤΗΝ ΤΙΜΗ ΟΠΟΥ ΚΑΙ ΝΑ ΕΙΝΑΙ) ---
-function scrapePrice() {
-    const container = document.getElementById('tv-widget');
-    if (!container) return;
-
-    const allElements = container.getElementsByTagName('*');
-    for (let el of allElements) {
-        if (el.children.length === 0) { // Μόνο τελικά στοιχεία κειμένου
-            const text = el.innerText.replace(/,/g, '').trim();
-            const num = parseFloat(text);
-            // Έλεγχος αν είναι ρεαλιστική τιμή χρυσού
-            if (!isNaN(num) && num > 1800 && num < 3500 && text.includes('.')) {
-                addTick(num);
-                break; 
-            }
-        }
-    }
-}
-
-function addTick(p) {
-    const now = Date.now();
-    if (ticks.length === 0 || ticks[ticks.length - 1].p !== p) {
-        ticks.push({ p: p, t: now });
-        if (ticks.length > MAX_TICKS) ticks.shift();
+// --- DATA ENGINE (PUBLIC API - NO CORS ERRORS) ---
+async function fetchPrice() {
+    try {
+        // Χρησιμοποιούμε το API της Binance (PAXG/USDT) που αντιστοιχεί στον Χρυσό
+        const response = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT');
+        const data = await response.json();
+        const price = parseFloat(data.price);
         
-        document.getElementById('price-display').innerText = p.toFixed(2);
-        document.getElementById('ticks-display').innerText = ticks.length.toLocaleString();
+        if (tickHistory.length === 0 || tickHistory[tickHistory.length - 1].p !== price) {
+            tickHistory.push({ p: price, t: Date.now() });
+            if (tickHistory.length > MAX_TICKS) tickHistory.shift();
+            
+            document.getElementById('price').innerText = price.toFixed(2);
+            document.getElementById('tick-count').innerText = tickHistory.length.toLocaleString();
+        }
+    } catch (e) {
+        console.error("Price fetch error. Retrying...");
     }
 }
 
-// --- CANDLE GENERATOR ---
+// --- SMC & FRACTAL CALCULATOR ---
 function getCandles(tf) {
     const sec = tfSeconds[tf] * 1000;
     const candles = [];
-    if (ticks.length === 0) return [];
+    if (tickHistory.length < 2) return [];
 
     let current = null;
-    ticks.forEach(t => {
-        const bucket = Math.floor(t.t / sec) * sec;
+    tickHistory.forEach(tick => {
+        const bucket = Math.floor(tick.t / sec) * sec;
         if (!current || current.time !== bucket) {
             if (current) candles.push(current);
-            current = { time: bucket, open: t.p, high: t.p, low: t.p, close: t.p };
+            current = { time: bucket, open: tick.p, high: tick.p, low: tick.p, close: tick.p };
         } else {
-            current.high = Math.max(current.high, t.p);
-            current.low = Math.min(current.low, t.p);
-            current.close = t.p;
+            current.high = Math.max(current.high, tick.p);
+            current.low = Math.min(current.low, tick.p);
+            current.close = tick.p;
         }
     });
     return candles;
 }
 
-// --- SMC LOGIC ENGINE ---
 function analyzeSMC(tf) {
     const candles = getCandles(tf);
-    if (candles.length < 20) return null;
+    if (candles.length < 15) return { status: 'LOADING', count: candles.length };
 
     const n = candles.length;
     const last = candles[n-1];
     const prev = candles[n-2];
     const p3 = candles[n-3];
-    const p4 = candles[n-4];
 
-    // 1. ORDER BLOCKS (STRICT)
-    let obBull = false, obBear = false;
+    // 1. ORDER BLOCKS (STRICT) - Ανεξάρτητος υπολογισμός
+    let obType = 'NONE';
     let obPrice = 0;
-    // Αναζήτηση στα τελευταία 15 κεριά για "Clear Break of Structure"
-    for (let i = n - 15; i < n - 2; i++) {
-        if (candles[i].close < candles[i].open && candles[i+1].close > candles[i].high) {
-            obBull = true; obPrice = candles[i].low;
+    // Αναζήτηση για τελευταίο Bearish πριν από δυνατό Bullish (Bull OB)
+    for(let i = n-10; i < n-1; i++) {
+        if(candles[i].close < candles[i].open && candles[i+1].close > candles[i].high) {
+            obType = 'BULLISH OB'; obPrice = candles[i].low;
         }
-        if (candles[i].close > candles[i].open && candles[i+1].close < candles[i].low) {
-            obBear = true; obPrice = candles[i].high;
+        if(candles[i].close > candles[i].open && candles[i+1].close < candles[i].low) {
+            obType = 'BEARISH OB'; obPrice = candles[i].high;
         }
     }
 
-    // 2. FVG (FAIR VALUE GAP)
+    // 2. FVG (FAIR VALUE GAP) - Ανεξάρτητος υπολογισμός
     const fvgBull = prev.low > p3.high;
     const fvgBear = prev.high < p3.low;
+    const fvgStatus = fvgBull ? 'BULLISH GAP' : (fvgBear ? 'BEARISH GAP' : 'MITIGATED');
 
-    // 3. FRACTAL SIMILARITY (TREND & PROJECTION)
-    const fractalBull = prev.low < p3.low && prev.low < p4.low && last.close > prev.high;
-    const fractalBear = prev.high > p3.high && prev.high > p4.high && last.close < prev.low;
+    // 3. FRACTAL SIMILARITY (PATTERN) - Ανεξάρτητος υπολογισμός
+    const isFractalBull = prev.low < p3.low && last.close > prev.high;
+    const isFractalBear = prev.high > p3.high && last.close < prev.low;
+    const fractalStatus = isFractalBull ? 'BULLISH SIM' : (isFractalBear ? 'BEARISH SIM' : 'NEUTRAL');
 
-    // TARGET PROJECTION (Based on previous wave size)
-    const waveSize = Math.abs(candles[n-10].high - candles[n-10].low) || 5;
-
-    // FINAL DECISION (INDIVIDUAL REQUIREMENTS)
+    // ΤΕΛΙΚΗ ΑΠΟΦΑΣΗ (Πρέπει κάθε δείκτης να είναι ΟΚ μεμονωμένα)
     let decision = 'WAIT';
-    let entry = last.close, sl = 0, tp = 0;
+    let tp = 0, sl = 0;
+    const waveSize = Math.abs(candles[n-5].high - candles[n-5].low); // Fractal wave projection
 
-    if (obBull && fvgBull && fractalBull) {
+    if (obType === 'BULLISH OB' && fvgBull && isFractalBull) {
         decision = 'BUY';
         sl = obPrice - 0.5;
-        tp = entry + waveSize;
-    } else if (obBear && fvgBear && fractalBear) {
+        tp = last.close + waveSize;
+    } else if (obType === 'BEARISH OB' && fvgBear && isFractalBear) {
         decision = 'SELL';
         sl = obPrice + 0.5;
-        tp = entry - waveSize;
+        tp = last.close - waveSize;
     }
 
-    return {
-        ob: obBull ? 'BULL OB' : (obBear ? 'BEAR OB' : 'NONE'),
-        fvg: fvgBull ? 'ACTIVE GAP' : (fvgBear ? 'ACTIVE GAP' : 'NONE'),
-        fractal: fractalBull ? 'BULLISH' : (fractalBear ? 'BEARISH' : 'NEUTRAL'),
-        decision, entry, sl, tp, count: n
-    };
+    return { status: 'READY', ob: obType, fvg: fvgStatus, fractal: fractalStatus, decision, tp, sl, entry: last.close, count: n };
 }
 
-// --- UI UPDATE ---
-function updateUI() {
-    const grid = document.getElementById('main-grid');
+// --- UI RENDERER ---
+function render() {
+    const container = document.getElementById('dashboard');
     let html = '';
 
     timeframes.forEach(tf => {
         const data = analyzeSMC(tf);
-        if (!data) {
-            html += `<div class="card"><div class="tf-label">${tf}</div><p style="color:var(--muted)">Syncing Ticks... (${ticks.length})</p></div>`;
-            return;
+        
+        if (data.status === 'LOADING') {
+            html += `<div class="card"><div class="tf-tag">${tf}</div><div class="loading-text">Building Candles: ${data.count}/15...</div></div>`;
+        } else {
+            html += `
+            <div class="card">
+                <div class="tf-tag">${tf}</div>
+                <table class="smc-table">
+                    <tr><td class="ind-label">Order Block</td><td class="ind-status" style="color:var(--gold)">${data.ob}</td></tr>
+                    <tr><td class="ind-label">Fair Value Gap</td><td class="ind-status" style="color:var(--green)">${data.fvg}</td></tr>
+                    <tr><td class="ind-label">Fractal Pattern</td><td class="ind-status">${data.fractal}</td></tr>
+                </table>
+
+                <div class="decision-panel ${data.decision}">
+                    <div class="signal-title">${data.decision}</div>
+                    ${data.decision !== 'WAIT' ? `
+                        <div class="targets">
+                            <div class="target-box"><span class="t-lbl">ENTRY</span><span class="t-val">${data.entry.toFixed(2)}</span></div>
+                            <div class="target-box"><span class="t-lbl">SL</span><span class="t-val" style="color:var(--red)">${data.sl.toFixed(2)}</span></div>
+                            <div class="target-box"><span class="t-lbl">TP</span><span class="t-val" style="color:var(--green)">${data.tp.toFixed(2)}</span></div>
+                        </div>
+                    ` : '<div style="font-size:10px; color:var(--muted)">Awaiting Strict Confluence...</div>'}
+                </div>
+            </div>`;
         }
-
-        const dClass = data.decision;
-        html += `
-        <div class="card">
-            <div class="tf-label">${tf}</div>
-            <table class="stats-table">
-                <tr><td class="indicator-name">Order Block</td><td class="indicator-status" style="color:var(--gold)">${data.ob}</td></tr>
-                <tr><td class="indicator-name">Fair Value Gap</td><td class="indicator-status" style="color:var(--green)">${data.fvg}</td></tr>
-                <tr><td class="indicator-name">Fractal Similarity</td><td class="indicator-status" style="color:var(--text)">${data.fractal}</td></tr>
-            </table>
-
-            <div class="decision-box ${dClass}">
-                <div class="lbl">FINAL DECISION</div>
-                <div class="signal-title">${data.decision}</div>
-                
-                ${data.decision !== 'WAIT' ? `
-                <div class="targets">
-                    <div class="t-item"><span class="t-lbl">ENTRY</span><span class="t-val">${data.entry.toFixed(2)}</span></div>
-                    <div class="t-item"><span class="t-lbl">SL</span><span class="t-val" style="color:var(--red)">${data.sl.toFixed(2)}</span></div>
-                    <div class="t-item"><span class="t-lbl">TP</span><span class="t-val" style="color:var(--green)">${data.tp.toFixed(2)}</span></div>
-                </div>` : '<div style="font-size:10px; color:var(--muted)">Awaiting Strict Confluence</div>'}
-            </div>
-            <div style="font-size:9px; color:var(--muted); margin-top:10px; text-align:right">Candles: ${data.count}</div>
-        </div>`;
     });
-    grid.innerHTML = html;
+    container.innerHTML = html;
 }
 
-// --- LOOPS ---
-setInterval(scrapePrice, 1000); // Κάθε δευτερόλεπτο σαρώνει το DOM για νέα τιμή
-setInterval(updateUI, 2000);    // Κάθε 2 δευτερόλεπτα ανανεώνει το Dashboard
-
+// --- EXECUTION ---
+setInterval(fetchPrice, 1000); // Μάζεψε ticks κάθε δευτερόλεπτο
+setInterval(render, 2000);     // Ανανέωσε το UI κάθε 2 δευτερόλεπτα
 </script>
+
 </body>
 </html>
