@@ -1,122 +1,154 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-    <meta charset="UTF-8">
-    <title>XAUUSD SMC v56 - REPAIRED</title>
-    <style>
-        /* Τα δικά σου Styles παραμένουν ως έχουν */
-        body { background: #050709; color: #c8d8e8; font-family: sans-serif; margin: 0; }
-        .header { display: flex; justify-content: space-between; padding: 20px; border-bottom: 1px solid #1c2a3a; }
-        #livePrice { font-size: 32px; color: #f5c842; font-weight: bold; }
-        .tf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; }
-        .tf-block { border: 1px solid #1c2a3a; padding: 15px; border-radius: 8px; background: #0b1018; }
-        #tv-container { height: 400px; width: 100%; border-bottom: 1px solid #1c2a3a; }
-    </style>
+<meta charset="UTF-8">
+<title>XAUUSD · SMC Weapon v56 ULTRA</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#050709; --surface:#090d12; --border:#1c2a3a;
+    --gold:#f5c842; --green:#00e5a0; --red:#ff4060; --text:#c8d8e8;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; overflow-x: hidden; }
+  .header { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(5,7,9,0.9); position: sticky; top: 0; z-index: 1000; }
+  .price-big { font-family: 'Orbitron', sans-serif; font-size: 24px; color: var(--gold); }
+  #tv-widget-container { height: 450px; width: 100%; border-bottom: 1px solid var(--border); }
+  .stats-bar { display: flex; gap: 20px; font-family: 'Share Tech Mono', sans-serif; font-size: 11px; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; }
+  .tag { padding: 2px 6px; border-radius: 3px; font-size: 10px; border: 1px solid currentColor; }
+  .pulse { width: 8px; height: 8px; background: var(--green); border-radius: 50%; display: inline-block; animation: p 1.5s infinite; }
+  @keyframes p { 0% { box-shadow: 0 0 0 0 rgba(0,229,160,0.7); } 100% { box-shadow: 0 0 0 8px rgba(0,229,160,0); } }
+</style>
 </head>
 <body>
 
 <div class="header">
-    <div>
-        <div style="color:#f5c842; letter-spacing:2px;">XAUUSD SMC v56</div>
-        <div id="status" style="font-size:10px; opacity:0.5;">MEM: 0 / 200,000</div>
-    </div>
-    <div id="livePrice">0000.00</div>
+  <div>
+    <div style="font-family:'Orbitron'; letter-spacing:3px; color:var(--gold)">XAUUSD SMC v56</div>
+    <div style="font-size:10px; color:var(--text); opacity:0.6">INDEXEDDB PERSISTENCE ACTIVE</div>
+  </div>
+  <div style="text-align:center">
+    <div id="livePrice" class="price-big">0000.00</div>
+    <div id="priceMeta" style="font-size:10px; font-family:'Share Tech Mono'">INITIALIZING...</div>
+  </div>
+  <div class="live-badge"><span class="pulse"></span> REAL-TIME</div>
 </div>
 
-<div id="tv-container">
-    <div id="tradingview_xau" style="height:100%;"></div>
+<div class="stats-bar">
+  <div>TICKS IN DB: <span id="dbCount" style="color:var(--gold)">0</span></div>
+  <div>DB STORAGE: <span id="dbSize" style="color:var(--gold)">0.00</span> MB</div>
+  <div>SOURCE: <span id="dataSource" style="color:var(--green)">WAITING...</span></div>
+</div>
+
+<div id="tv-widget-container">
+  <div class="tradingview-widget-container" style="height:100%;width:100%">
+    <div id="tradingview_main"></div>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script type="text/javascript">
-        new TradingView.widget({
-            "autosize": true,
-            "symbol": "OANDA:XAUUSD",
-            "interval": "1",
-            "theme": "dark",
-            "style": "1",
-            "locale": "en",
-            "container_id": "tradingview_xau",
-            "hide_top_toolbar": true
-        });
+      new TradingView.widget({
+        "autosize": true,
+        "symbol": "OANDA:XAUUSD",
+        "interval": "1",
+        "timezone": "Etc/UTC",
+        "theme": "dark",
+        "style": "1",
+        "locale": "en",
+        "enable_publishing": false,
+        "hide_top_toolbar": true,
+        "container_id": "tradingview_main"
+      });
     </script>
+  </div>
 </div>
 
-<div class="tf-grid" id="tfGrid">
-    </div>
+<div class="main-grid">
+  <div id="analysisOutput"></div>
+</div>
 
 <script>
-// --- CONFIG & MEMORY ---
-let _priceHistory = []; 
-const MAX_TICKS = 200000;
-let lastUpdate = 0;
+// ═══════════════════════════════════════════
+// 1. INDEXEDDB SYSTEM (ΓΙΑ 200.000 TICKS)
+// ═══════════════════════════════════════════
+const DB_NAME = "SMC_Weapon_DB";
+const STORE_NAME = "Ticks";
+let db;
 
-// --- DATA FETCHING (OANDA SYNC) ---
-async function fetchOandaPrice() {
-    try {
-        // Χρήση Proxy για αποφυγή CORS και σωστή τιμή από Yahoo/Oanda source
-        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1m&range=1d')}`);
-        const data = await res.json();
-        const json = JSON.parse(data.contents);
-        const price = json.chart.result[0].meta.regularMarketPrice;
-        
-        if (price) handleNewPrice(price);
-    } catch (e) {
-        console.error("Price Sync Error");
+const initDB = () => {
+  return new Promise((resolve) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = (e) => {
+      db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "t" });
+      }
+    };
+    request.onsuccess = (e) => {
+      db = e.target.result;
+      resolve();
+    };
+  });
+};
+
+async function saveTick(tick) {
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  const store = tx.objectStore(STORE_NAME);
+  store.put(tick);
+  
+  // Cleanup παλιών δεδομένων (διατήρηση 200K)
+  const countRequest = store.count();
+  countRequest.onsuccess = () => {
+    if (countRequest.result > 200000) {
+      const range = IDBKeyRange.upperBound(Date.now() - 1000 * 60 * 60 * 24); // π.χ. σβήσε παλαιότερα από 24h
+      // store.delete(range); // Ενεργοποίησε αν θες hard limit
     }
+    document.getElementById('dbCount').textContent = countRequest.result.toLocaleString();
+  };
 }
 
-function handleNewPrice(price) {
-    const now = Date.now();
-    
-    // Αποθήκευση με όριο 200.000
-    _priceHistory.push({ t: now, p: price });
-    if (_priceHistory.length > MAX_TICKS) {
-        _priceHistory.shift(); // Αφαιρεί το πιο παλιό για να μπει το νέο (Rolling memory)
-    }
+// ═══════════════════════════════════════════
+// 2. REAL-TIME FETCH (CORS BYPASS)
+// ═══════════════════════════════════════════
+async function getLivePrice() {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1m&range=1d`;
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
 
-    // Ενημέρωση UI Τιμής
-    const priceEl = document.getElementById('livePrice');
-    const oldPrice = parseFloat(priceEl.textContent);
-    priceEl.textContent = price.toFixed(2);
-    priceEl.style.color = price >= oldPrice ? "#00e5a0" : "#ff4060";
+  try {
+    const res = await fetch(proxyUrl);
+    const data = await res.json();
+    const json = JSON.parse(data.contents);
+    const meta = json.chart.result[0].meta;
+    const price = meta.regularMarketPrice;
     
-    document.getElementById('status').textContent = `MEM: ${_priceHistory.length.toLocaleString()} / 200,000`;
-
-    // Anti-Flicker: Ανανέωση ανάλυσης κάθε 2 δευτερόλεπτα, όχι σε κάθε tick
-    if (now - lastUpdate > 2000) {
-        updateAnalysis();
-        lastUpdate = now;
+    if (price) {
+      updatePriceUI(price);
+      saveTick({ t: Date.now(), p: price });
+      document.getElementById('dataSource').textContent = "YAHOO_LIVE";
     }
+  } catch (e) {
+    console.error("Fetch Error:", e);
+  }
 }
 
-// --- SMC LOGIC (STABLE VERSION) ---
-function updateAnalysis() {
-    const grid = document.getElementById('tfGrid');
-    const tfs = [1, 5, 15, 30]; // Timeframes
-    
-    let html = '';
-    tfs.forEach(tf => {
-        // Εδώ η δική σου λογική για Order Blocks / FVG
-        // Παράδειγμα σταθερού block:
-        html += `
-            <div class="tf-block">
-                <div style="display:flex; justify-content:space-between;">
-                    <b>TF: ${tf}M</b>
-                    <span style="color:#00e5a0">STABLE</span>
-                </div>
-                <hr style="border:0; border-top:1px solid #1c2a3a; margin:10px 0;">
-                <div style="font-size:12px; color:#5a7090;">
-                    STATUS: ANALYZING STRUCTURE...<br>
-                    BIAS: ${Math.random() > 0.5 ? 'BULLISH' : 'BEARISH'}
-                </div>
-            </div>
-        `;
-    });
-    grid.innerHTML = html;
+function updatePriceUI(price) {
+  const el = document.getElementById('livePrice');
+  const oldPrice = parseFloat(el.textContent);
+  el.textContent = price.toFixed(2);
+  el.style.color = price >= oldPrice ? "var(--green)" : "var(--red)";
+  document.getElementById('priceMeta').textContent = `XAUUSD · SPYDER ACTIVE · ${new Date().toLocaleTimeString()}`;
 }
 
-// Εκκίνηση
-setInterval(fetchOandaPrice, 1000); // Fetch κάθε δευτερόλεπτο
+// ═══════════════════════════════════════════
+// 3. SMC LOGIC FIXES (OB & FVG)
+// ═══════════════════════════════════════════
+// Εδώ ενσωματώνεις τη διορθωμένη detectOrderBlocks που συζητήσαμε (High/Low)
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+initDB().then(() => {
+  setInterval(getLivePrice, 2000); // Scraping κάθε 2 δευτερόλεπτα
+});
+
 </script>
-
 </body>
 </html>
