@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>XAUUSD SMC · FVG · Fractal + MSB Scanner v2.3</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050709;--panel:#0b1018;--border:#1c2a3a;--gold:#f5c842;--green:#00e5a0;--red:#ff4060;--muted:#5a7090;--text:#c8d8e8;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;margin:0;padding:0;}
+.header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;border-bottom:2px solid var(--border);
+  position:sticky;top:0;background:rgba(5,7,9,0.97);z-index:30;
+  box-shadow:0 4px 20px rgba(0,0,0,0.3);
+}
+.logo{
+  font-family:'Orbitron',sans-serif;color:var(--gold);font-weight:900;
+  letter-spacing:3px;font-size:22px;text-shadow:0 0 12px rgba(245,200,66,0.4);
+}
+.header-right{display:flex;align-items:center;gap:16px}
+.live-badge{
+  font-family:'Share Tech Mono',monospace;background:rgba(0,229,160,0.1);
+  padding:8px 14px;border-radius:30px;color:var(--green);font-size:13px;
+  display:flex;align-items:center;gap:6px;border:1px solid rgba(0,229,160,0.3);
+}
+.container{padding:20px;max-width:1280px;margin:0 auto}
+.tf-row{
+  display:flex;gap:10px;flex-wrap:wrap;margin:16px 0;
+  background:rgba(11,16,24,0.6);padding:8px;border-radius:12px;
+}
+.tf-btn{
+  background:var(--panel);border:1px solid var(--border);color:var(--muted);
+  padding:10px 18px;border-radius:8px;cursor:pointer;
+  font-family:'Orbitron',sans-serif;font-size:15px;transition:all 0.2s;
+}
+.tf-btn.active{
+  background:rgba(245,200,66,0.15);border-color:var(--gold);color:var(--gold);
+  box-shadow:0 0 15px rgba(245,200,66,0.4);
+}
+.grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+@media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+
+.panel-card{
+  background:var(--panel);border:1px solid var(--border);
+  padding:18px;border-radius:14px;box-shadow:0 8px 25px rgba(0,0,0,0.4);
+}
+.table{
+  width:100%;border-collapse:collapse;font-family:'Share Tech Mono',monospace;
+  background:rgba(5,7,9,0.4);border-radius:10px;overflow:hidden;
+}
+.table th{
+  background:rgba(245,200,66,0.08);padding:10px 8px;
+  border-bottom:2px solid var(--border);font-size:13px;color:var(--gold);text-transform:uppercase;
+}
+.table td{padding:10px 8px;border-bottom:1px solid rgba(28,42,58,0.5);vertical-align:middle}
+.table tr:hover{background:rgba(245,200,66,0.06)}
+.small{font-size:13px;color:var(--muted)}
+.status-dot{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:8px;vertical-align:middle}
+.hint{font-family:'Share Tech Mono',monospace;color:var(--muted);font-size:13px;margin-top:12px;line-height:1.4}
+.canvas-spark{width:100%;height:42px;border-radius:10px;display:block;background:rgba(5,7,9,0.6)}
+.fractal-pill{
+  display:inline-flex;align-items:center;gap:4px;padding:2px 8px;
+  background:rgba(0,229,160,0.15);color:var(--green);border-radius:9999px;font-size:12px;
+}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="logo">XAU/USD · SMC SCANNER v2.3</div>
+  <div class="header-right">
+    <div id="tv-widget-wrap" style="min-width:240px">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+        {
+          "symbol": "OANDA:XAUUSD",
+          "width": "100%",
+          "colorTheme": "dark",
+          "isTransparent": true,
+          "locale": "en"
+        }
+        </script>
+      </div>
+    </div>
+    <div class="live-badge"><span class="status-dot" id="live-dot" style="background:var(--muted)"></span><span id="live-status-text">LIVE • REAL-TIME</span></div>
+  </div>
+</header>
+
+<div class="container">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+    <div class="small">Συλλογή ticks — max 200.000 (localStorage persistence)</div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div class="small">Ticks in memory: <b id="tick-count" style="color:var(--gold)">0</b></div>
+      <button onclick="clearTicks()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px">Clear ticks</button>
+    </div>
+  </div>
+
+  <div class="tf-row">
+    <button class="tf-btn active" onclick="selectTF(this)">M1</button>
+    <button class="tf-btn" onclick="selectTF(this)">M3</button>
+    <button class="tf-btn" onclick="selectTF(this)">M5</button>
+    <button class="tf-btn" onclick="selectTF(this)">M15</button>
+    <button class="tf-btn" onclick="selectTF(this)">M30</button>
+    <button class="tf-btn" onclick="selectTF(this)">M45</button>
+    <button class="tf-btn" onclick="selectTF(this)">H1</button>
+  </div>
+
+  <div class="grid">
+    <!-- Header Panel -->
+    <div class="panel-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--gold)">SMC · OB + FVG + Fractal + MSB</div>
+          <div class="small" style="margin-top:4px">Dynamic Entry • Fractal Pip Prediction • 4x Stability Filter</div>
+        </div>
+        <div style="text-align:right">
+          <div class="small">Τρέχουσα τιμή</div>
+          <div style="font-family:'Orbitron',sans-serif;font-size:26px;color:var(--gold);letter-spacing:1px" id="last-price">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="panel-card">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--gold)">ΑΠΟΤΕΛΕΣΜΑΤΑ ΑΝΑ TIMEFRAME</div>
+      <table class="table" id="results-table">
+        <thead><tr>
+          <th>TF</th>
+          <th>Order Block</th>
+          <th>FVG</th>
+          <th>Fractal</th>
+          <th>MSB</th>
+          <th>Decision</th>
+          <th>Entry</th>
+          <th>SL</th>
+          <th>TP</th>
+          <th>Est. Profit (0.1 lot)</th>
+        </tr></thead>
+        <tbody id="results-body"></tbody>
+      </table>
+      <div class="hint">
+        ✅ Το signal (BUY/SELL) εμφανίζεται ΜΟΝΟ όταν OB + FVG + Fractal + MSB συμφωνούν + 4 συνεχόμενες επιβεβαιώσεις.<br>
+        Entry τιμή ενημερώνεται δυναμικά σε κάθε ανάλυση.
+      </div>
+    </div>
+
+    <!-- Spark -->
+    <div class="panel-card">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="flex:1">
+          <div style="font-weight:700;color:var(--gold);margin-bottom:8px">Spark Line (τελευταία ticks)</div>
+          <canvas id="spark-canvas" class="canvas-spark"></canvas>
+        </div>
+        <div style="min-width:200px;margin-left:20px">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Γρήγορες ενέργειες</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button onclick="forceAnalyze()" style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid var(--gold);background:transparent;color:var(--gold);cursor:pointer;font-weight:600">ΑΝΑΛΥΣΗ ΤΩΡΑ</button>
+            <button onclick="exportTicks()" style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">Export ticks</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// --------------------------- Settings ---------------------------
+const MAX_TICKS = 200000;
+const TF_MAP = {M1:60,M3:180,M5:300,M15:900,M30:1800,M45:2700,H1:3600};
+const TFS = ['M1','M3','M5','M15','M30','M45','H1'];
+const PLOT_POINTS = 140;
+const STABILITY_REQUIRED = 4;
+
+// --------------------------- State ---------------------------
+window._priceHistory = [];
+window._totalTicksEver = 0;
+window._lastKnownPrice = null;
+window._signalStability = {};
+
+// --------------------------- Persistence ---------------------------
+function saveTicksToStorage(){
+  try{
+    const keepSince = Date.now() - 48*60*60*1000;
+    const recent = window._priceHistory.filter(t => t.time > keepSince);
+    localStorage.setItem('xau_ticks', JSON.stringify(recent));
+    localStorage.setItem('xau_ticks_total', String(window._totalTicksEver));
+  }catch(e){}
+}
+function loadTicksFromStorage(){
+  try{
+    const raw = localStorage.getItem('xau_ticks');
+    if(raw){
+      const arr = JSON.parse(raw);
+      window._priceHistory = arr;
+      window._totalTicksEver = arr.length;
+    }
+  }catch(e){}
+}
+loadTicksFromStorage();
+
+// --------------------------- Utilities ---------------------------
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function pearsonCorrelation(a, b) {
+  if (a.length !== b.length || a.length === 0) return 0;
+  const n = a.length;
+  const meanA = a.reduce((s,v)=>s+v,0)/n;
+  const meanB = b.reduce((s,v)=>s+v,0)/n;
+  let num = 0, denA = 0, denB = 0;
+  for(let i=0; i<n; i++){
+    const da = a[i]-meanA, db = b[i]-meanB;
+    num += da*db; denA += da*da; denB += db*db;
+  }
+  return num / Math.sqrt(denA*denB + 1e-10);
+}
+
+// --------------------------- Tick Recording ---------------------------
+function recordPrice(price){
+  if(!price || price < 1000) return;
+  const t = Date.now();
+  window._priceHistory.push({price, time:t});
+  window._lastKnownPrice = price;
+  window._totalTicksEver++;
+  if(window._priceHistory.length > MAX_TICKS) window._priceHistory.shift();
+
+  updateTickCountUI();
+  drawSpark();
+  analyzeThrottled();
+  if(window._totalTicksEver % 40 === 0) saveTicksToStorage();
+}
+function updateTickCountUI(){
+  document.getElementById('tick-count').textContent = window._priceHistory.length.toLocaleString('el-GR');
+  document.getElementById('last-price').textContent = window._lastKnownPrice ? window._lastKnownPrice.toFixed(2) : '—';
+  document.getElementById('live-dot').style.background = window._lastKnownPrice ? 'var(--green)' : 'var(--muted)';
+}
+
+// --------------------------- Candle Builder ---------------------------
+function buildCandlesFromHistory(tf){
+  const history = window._priceHistory;
+  if(history.length < 5) return null;
+  const tfMs = TF_MAP[tf] * 1000;
+  const buckets = new Map();
+  for(let tick of history){
+    const key = Math.floor(tick.time / tfMs) * tfMs;
+    if(!buckets.has(key)){
+      buckets.set(key, {open:tick.price, high:tick.price, low:tick.price, close:tick.price, time:key});
+    } else {
+      const b = buckets.get(key);
+      b.high = Math.max(b.high, tick.price);
+      b.low = Math.min(b.low, tick.price);
+      b.close = tick.price;
+    }
+  }
+  return Array.from(buckets.values()).sort((a,b)=>a.time-b.time);
+}
+
+// --------------------------- Indicators ---------------------------
+function detectOrderBlocks(candles){
+  if(candles.length < 10) return null;
+  const n = candles.length;
+  const avgBody = candles.slice(-50).reduce((s,c)=>s+Math.abs(c.close-c.open),0)/Math.min(50,n);
+  let latest = null;
+  for(let i=3;i<n-2;i++){
+    const c1 = candles[i-1], c2 = candles[i];
+    const b1 = c1.close - c1.open, b2 = c2.close - c2.open;
+    if(b1 < 0 && b2 > 0 && Math.abs(b2) > avgBody * 1.9){
+      latest = {type:'BULL_OB', zone:{high:Math.max(c1.open,c1.close), low:Math.min(c1.open,c1.close)}};
+    }
+    if(b1 > 0 && b2 < 0 && Math.abs(b2) > avgBody * 1.9){
+      latest = {type:'BEAR_OB', zone:{high:Math.max(c1.open,c1.close), low:Math.min(c1.open,c1.close)}};
+    }
+  }
+  return latest;
+}
+
+function detectFVG(candles){
+  if(candles.length < 5) return null;
+  for(let i=candles.length-4; i>=2; i--){
+    const c1 = candles[i-1], c3 = candles[i+1];
+    if(c3.low > c1.high + 0.12) return {type:'BULL_FVG', zone:{high:c3.low, low:c1.high}};
+    if(c3.high < c1.low - 0.12) return {type:'BEAR_FVG', zone:{high:c1.low, low:c3.high}};
+  }
+  return null;
+}
+
+function findPatternRepetition(closes, lastPrice){
+  if(closes.length < 18) return null;
+  const lookback = 10;
+  const recent = closes.slice(-lookback);
+  const recentPct = [];
+  for(let i=1;i<recent.length;i++) recentPct.push((recent[i]-recent[i-1])/recent[i-1]*100);
+
+  let bestCorr = -1, bestMove = 0;
+  for(let s=0; s<=closes.length-lookback-8; s++){
+    const win = closes.slice(s,s+lookback);
+    const winPct = [];
+    for(let i=1;i<win.length;i++) winPct.push((win[i]-win[i-1])/win[i-1]*100);
+    const corr = pearsonCorrelation(recentPct, winPct);
+    if(corr > bestCorr){
+      bestCorr = corr;
+      const after = closes.slice(s+lookback, s+lookback+8);
+      bestMove = after.length ? (after[after.length-1]-after[0])/after[0]*100 : 0;
+    }
+  }
+  const similarity = clamp(Math.round((bestCorr + 1) * 50), 0, 100);
+  // Predicted pips (XAUUSD: 1 pip = 0.01)
+  const predictedPips = Math.round(Math.abs(bestMove) * lastPrice);
+  return {similarity, predictedDir: bestMove > 0 ? 'UP' : 'DOWN', predictedPips};
+}
+
+function detectMSB(candles){
+  if(candles.length < 12) return null;
+  const swingHighs = [], swingLows = [];
+  for(let i=2; i<candles.length-2; i++){
+    if(candles[i].high > candles[i-1].high && candles[i].high > candles[i-2].high &&
+       candles[i].high > candles[i+1].high && candles[i].high > candles[i+2].high){
+      swingHighs.push(candles[i].high);
+    }
+    if(candles[i].low < candles[i-1].low && candles[i].low < candles[i-2].low &&
+       candles[i].low < candles[i+1].low && candles[i].low < candles[i+2].low){
+      swingLows.push(candles[i].low);
+    }
+  }
+  if(swingHighs.length < 1 || swingLows.length < 1) return null;
+  const lastHigh = Math.max(...swingHighs);
+  const lastLow = Math.min(...swingLows);
+  const currentClose = candles[candles.length-1].close;
+  if(currentClose > lastHigh + 0.08) return {type:'BULL_MSB'};
+  if(currentClose < lastLow - 0.08) return {type:'BEAR_MSB'};
+  return null;
+}
+
+function calcATR(highs,lows,closes){
+  if(closes.length < 15) return 1.2;
+  let sum = 0;
+  for(let i=closes.length-14; i<closes.length; i++){
+    const tr = Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1]));
+    sum += tr;
+  }
+  return sum/14;
+}
+
+// --------------------------- Analysis ---------------------------
+function analyzeTimeframe(tf){
+  const candles = buildCandlesFromHistory(tf);
+  if(!candles || candles.length < 10) return {tf, ready:false};
+
+  const closes = candles.map(c=>c.close);
+  const highs = candles.map(c=>c.high);
+  const lows = candles.map(c=>c.low);
+  const lastPrice = window._lastKnownPrice || closes[closes.length-1];
+
+  const ob = detectOrderBlocks(candles);
+  const fvg = detectFVG(candles);
+  const fract = findPatternRepetition(closes, lastPrice);
+  const msb = detectMSB(candles);
+  const atr = calcATR(highs,lows,closes);
+
+  let obDec = ob ? (ob.type==='BULL_OB'?'BUY':'SELL') : 'NEUT';
+  let fvgDec = fvg ? (fvg.type==='BULL_FVG'?'BUY':'SELL') : 'NEUT';
+  let fractDec = (fract && fract.similarity >= 70) ? (fract.predictedDir==='UP'?'BUY':'SELL') : 'NEUT';
+  let msbDec = msb ? (msb.type==='BULL_MSB'?'BUY':'SELL') : 'NEUT';
+
+  // Confirmations
+  let obConfirmed = false;
+  if(ob && lastPrice){
+    const z = ob.zone;
+    const wasInZone = window._priceHistory.slice(-80).some(t => t.price >= z.low && t.price <= z.high);
+    if(ob.type==='BULL_OB' && wasInZone && lastPrice > z.low) obConfirmed = true;
+    if(ob.type==='BEAR_OB' && wasInZone && lastPrice < z.high) obConfirmed = true;
+  }
+  let fvgConfirmed = false;
+  if(fvg && lastPrice){
+    const z = fvg.zone;
+    const near = fvg.type==='BULL_FVG' ? Math.abs(lastPrice - z.low) <= atr*0.7 : Math.abs(lastPrice - z.high) <= atr*0.7;
+    const recentCloses = closes.slice(-6);
+    const bounced = fvg.type==='BULL_FVG' ? recentCloses[recentCloses.length-1] > recentCloses[recentCloses.length-2] : recentCloses[recentCloses.length-1] < recentCloses[recentCloses.length-2];
+    if(near || bounced) fvgConfirmed = true;
+  }
+  let fractConfirmed = !!(fract && fract.similarity >= 70);
+  let msbConfirmed = !!msb;
+
+  let rawDecision = 'WAIT';
+  if(obDec !== 'NEUT' && obDec === fvgDec && fvgDec === fractDec && fractDec === msbDec &&
+     obConfirmed && fvgConfirmed && fractConfirmed && msbConfirmed){
+    rawDecision = obDec;
+  }
+
+  // Σταθερότητα
+  if(!window._signalStability[tf]) window._signalStability[tf] = {decision:'WAIT', count:0};
+  const stab = window._signalStability[tf];
+
+  if(rawDecision === stab.decision && rawDecision !== 'WAIT'){
+    stab.count++;
+  } else if(rawDecision !== 'WAIT'){
+    stab.decision = rawDecision;
+    stab.count = 1;
+  } else {
+    stab.count = 0;
+    stab.decision = 'WAIT';
+  }
+
+  const finalDecision = (stab.count >= STABILITY_REQUIRED) ? stab.decision : 'WAIT';
+
+  // ΔΥΝΑΜΙΚΟ ENTRY → πάντα η τρέχουσα τιμή όταν υπάρχει signal
+  const entry = finalDecision !== 'WAIT' ? lastPrice : (lastPrice || closes[closes.length-1]);
+  const slDist = atr * 1.5;
+  const sl = finalDecision === 'BUY' ? entry - slDist : finalDecision === 'SELL' ? entry + slDist : null;
+  const tp = finalDecision === 'BUY' ? entry + slDist*2 : finalDecision === 'SELL' ? entry - slDist*2 : null;
+  const estProfit = tp ? Math.abs(tp - entry) * 10 : 0;
+
+  return {
+    tf, ready:true,
+    ob, fvg, fract, msb,
+    finalDecision,
+    entry: Number(entry.toFixed(2)),
+    sl: sl ? Number(sl.toFixed(2)) : null,
+    tp: tp ? Number(tp.toFixed(2)) : null,
+    estProfit: Number(estProfit.toFixed(0)),
+    fractPips: fract ? fract.predictedPips : 0
+  };
+}
+
+function analyzeAllTimeframes(){
+  const tbody = document.getElementById('results-body');
+  tbody.innerHTML = '';
+  for(const tf of TFS){
+    const res = analyzeTimeframe(tf);
+    if(!res.ready){
+      tbody.insertAdjacentHTML('beforeend', `<tr><td>${tf}</td><td colspan="9" class="small">Not ready</td></tr>`);
+      continue;
+    }
+
+    const obTxt = res.ob ? `${res.ob.type}<br><span style="font-size:11px">[${res.ob.zone.high.toFixed(2)}–${res.ob.zone.low.toFixed(2)}]</span>` : '—';
+    const fvgTxt = res.fvg ? `${res.fvg.type}<br><span style="font-size:11px">[${res.fvg.zone.high.toFixed(2)}–${res.fvg.zone.low.toFixed(2)}]</span>` : '—';
+    const msbTxt = res.msb ? res.msb.type : '—';
+
+    // Fractal με pip prediction (πιο όμορφο)
+    let fractHtml = '—';
+    if(res.fract){
+      const color = res.fract.predictedDir === 'UP' ? 'var(--green)' : 'var(--red)';
+      fractHtml = `
+        <span style="color:${color}">${res.fract.similarity}%</span>
+        ${res.fractPips > 0 ? `<span class="fractal-pill" style="color:${color}">${res.fract.predictedDir} +${res.fractPips} pips</span>` : ''}
+      `;
+    }
+
+    const decisionColor = res.finalDecision === 'BUY' ? 'var(--green)' : res.finalDecision === 'SELL' ? 'var(--red)' : 'var(--muted)';
+
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td><b>${tf}</b></td>
+        <td style="font-size:12px">${obTxt}</td>
+        <td style="font-size:12px">${fvgTxt}</td>
+        <td style="font-size:12px">${fractHtml}</td>
+        <td style="font-size:12px">${msbTxt}</td>
+        <td style="font-weight:700;color:${decisionColor}">${res.finalDecision}</td>
+        <td style="font-family:'Orbitron',sans-serif">${res.entry.toFixed(2)}</td>
+        <td>${res.sl ? res.sl.toFixed(2) : '—'}</td>
+        <td>${res.tp ? res.tp.toFixed(2) : '—'}</td>
+        <td style="color:var(--gold)">${res.estProfit ? '$'+res.estProfit : '—'}</td>
+      </tr>
+    `);
+  }
+}
+
+const analyzeThrottled = (() => { let t; return ()=>{clearTimeout(t); t=setTimeout(analyzeAllTimeframes,1600);} })();
+function forceAnalyze(){ analyzeAllTimeframes(); }
+
+// Spark
+function drawSpark(){
+  const canvas = document.getElementById('spark-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.offsetWidth, h = canvas.offsetHeight, dpr = window.devicePixelRatio||1;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  ctx.scale(dpr,dpr); ctx.clearRect(0,0,w,h);
+  const pts = window._priceHistory.slice(-PLOT_POINTS).map(t=>t.price);
+  if(pts.length<2) return;
+  const mn=Math.min(...pts), mx=Math.max(...pts), rng=mx-mn||1;
+  const toX = i => (i/(pts.length-1))*w;
+  const toY = v => h - ((v-mn)/rng)*(h-8)-4;
+  ctx.beginPath(); ctx.moveTo(toX(0),toY(pts[0]));
+  for(let i=1;i<pts.length;i++) ctx.lineTo(toX(i),toY(pts[i]));
+  ctx.strokeStyle = pts[pts.length-1]>=pts[0]?'#00e5a0':'#ff4060';
+  ctx.lineWidth=2.2; ctx.stroke();
+}
+
+// TradingView Reader
+window._tvPriceReaderStarted = false;
+function startTVPriceReader(){
+  if(window._tvPriceReaderStarted) return;
+  window._tvPriceReaderStarted = true;
+  setInterval(()=>{
+    try{
+      const wrap = document.getElementById('tv-widget-wrap');
+      const els = wrap.querySelectorAll('span,div');
+      for(let el of els){
+        const m = el.textContent.replace(/\s+/g,' ').match(/(\d{3,4}(?:[.,]\d{1,2}))/);
+        if(m){
+          const val = parseFloat(m[1].replace(',',''));
+          if(val>1000&&val<20000){
+            const last = window._priceHistory[window._priceHistory.length-1];
+            if(!last || Date.now()-last.time>=600 || Math.abs(last.price-val)>0.01){
+              recordPrice(val);
+            }
+            return;
+          }
+        }
+      }
+    }catch(e){}
+  },850);
+}
+setTimeout(startTVPriceReader,1800);
+
+// Bootstrap
+if(window._priceHistory.length===0){
+  const seed = 3172.5 + (Math.random()-0.5)*20;
+  for(let i=0;i<90;i++) recordPrice(Number((seed+(Math.random()-0.5)*0.6).toFixed(2)));
+} else {
+  window._lastKnownPrice = window._priceHistory[window._priceHistory.length-1].price;
+}
+
+setTimeout(analyzeAllTimeframes,900);
+setInterval(()=>{ analyzeAllTimeframes(); saveTicksToStorage(); },3000);
+
+window.forceAnalyze = forceAnalyze;
+window.exportTicks = ()=>{ console.log(window._priceHistory.slice(-6000)); alert('✅ Ticks exported to console (last 6000)'); };
+window.clearTicks = ()=>{ if(confirm('Clear all ticks?')){ window._priceHistory=[]; window._totalTicksEver=0; saveTicksToStorage(); updateTickCountUI(); analyzeAllTimeframes(); }};
+</script>
+</body>
+</html>
