@@ -1,213 +1,231 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XAUUSD SMC + FVG + FRACTAL System</title>
-  <!-- Orbitron + Share Tech Mono: καθαρή εμφάνιση -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-  <style>
-    body { background:#090d12; color:#d0d8e0; font-family:'Share Tech Mono',monospace; margin:0; }
-    .header { background:#191c23; padding:16px; font-family:'Orbitron',sans-serif; font-size:20px; font-weight:900; letter-spacing:2px; color:#f5c842; text-align:center; }
-    .sub { font-size:10px; color:#606872; }
-    .tv-wrap { margin:22px 0 18px 0; text-align:center; }
-    .tf-row { display:flex; justify-content:center; gap:7px; margin-bottom:18px; flex-wrap:wrap; }
-    .tf-btn { font-family:'Orbitron'; background:#11151b; color:#d0d8e0; border:1px solid #313542; border-radius:3px; padding:9px 18px; font-size:12px; letter-spacing:1.3px; cursor:pointer; margin-bottom:4px; }
-    .tf-btn.active { background:#f5c842; color:#17191f; font-weight:900; border:1.5px solid #f5c842; }
-    .sys-table { width:96%; margin:18px auto; border-collapse:collapse; background:#191e29; box-shadow:0 3px 24px #15171c99; }
-    .sys-table th,.sys-table td { padding:9px 8px; border-bottom:1px solid #364051b0; font-size:13px; text-align:center; }
-    .sys-table th { background:#13151d; color:#f5c842; font-size:12px; }
-    .sys-table tr:last-child td { border-bottom:none; }
-    .bull { color:#00e598;font-weight:900; }
-    .bear { color:#ff4060;font-weight:900; }
-    .neut { color:#52d1ff;font-weight:900; }
-    .smcbox,.panel-bg {background:#171b2a;margin:24px auto 14px auto;border-radius:10px;padding:16px 18px 10px 18px;width:97%;box-shadow:0 2px 9px #20223650;}
-    .smchead {font-family:'Orbitron',sans-serif;font-size:14px;color:#f5c842;letter-spacing:2px;margin-bottom:8px;}
-    .hist-bar { color:#9aadc5;font-size:13px;margin:10px 2% 0 2%; background:#181929;border-radius:7px;padding:6px 12px;display:inline-block; }
-    #history-tick-count { color:#f5c842; font-weight:900; }
-  </style>
+<meta charset="UTF-8">
+<title>XAUUSD SMC FVG FRACTAL Engine</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+body { background: #050709; color: #d2dde8; font-family: 'Share Tech Mono', monospace; margin:0; padding:0; }
+h1 { font-family: 'Orbitron',sans-serif; color: #f5c842; letter-spacing:4px;}
+.engine-table { width:100%; border-collapse:collapse; background:#0b1018; margin-bottom:30px;}
+.engine-table th, .engine-table td { border:1px solid #1c2a3a; padding:8px 10px; font-size:12px; text-align:left;}
+.engine-table th { background: #101826; color: #f5c842; font-family:'Orbitron',sans-serif; font-size:12px;}
+.engine-table .buy   { color:#00e5a0; font-weight:bold;}
+.engine-table .sell  { color:#ff4060; font-weight:bold;}
+.engine-table .wait  { color:#3de0ff; font-weight:bold;}
+.engine-table td:last-child { font-family:'Orbitron',monospace; }
+.stat { display:inline-block; min-width:98px;}
+.timeframe-label { color:#f5c842; font-size:16px; font-family:'Orbitron',sans-serif; }
+</style>
 </head>
 <body>
-  <div class="header">XAUUSD SMC · FVG · FRACTAL SYSTEM<br><span class="sub">200.000 live ticks · PRO Trend + Entry Engine</span></div>
-
-  <div class="tv-wrap">
-    <!-- TradingView Widget -->
-    <div class="tradingview-widget-container" style="display:inline-block;min-width:315px">
+  <h1>XAUUSD PRO – SMC/FVG/FRACTAL Engine</h1>
+  <div id="tv-widget-container" style="margin-bottom:18px;">
+    <!-- TradingView Single Quote widget for scrape-tick feed -->
+    <div class="tradingview-widget-container">
       <div class="tradingview-widget-container__widget"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async defer>
       {
         "symbol": "OANDA:XAUUSD",
-        "width": "320",
+        "width": "300",
         "colorTheme": "dark",
-        "isTransparent": false,
+        "isTransparent": true,
         "locale": "en"
       }
       </script>
     </div>
-    <span id="live-price" style="font-family:'Orbitron';font-size:27px;color:#f5c842;margin-left:16px;font-weight:900"></span>
-    <span id="tick-dot" style="display:inline-block;width:12px;height:12px;border-radius:6px;background:#333;margin-left:8px;vertical-align:middle"></span>
   </div>
+  <div id="tick-status" style="font-family:'Share Tech Mono',monospace; color:#f5c842;margin-bottom:8px;">Ticks: 0 / 200,000</div>
+  <div id="smc-tables"></div>
+  <script>
+    // -------- Οι μοναδικές σου global μεταβλητές --------
+    window._ticks    = []; // {price, time}
+    const MAX_TICKS  = 200000;
+    const TIMEFRAMES = {M1:60, M3:180, M5:300, M15:900, M30:1800, M45:2700, H1:3600};
 
-  <div class="hist-bar">
-    Ιστορικό ticks: <span id="history-tick-count">0</span> / 200.000
-  </div>
-
-  <div class="tf-row" id="tf-row">
-    <!-- Τα timeframes γεμίζουν με JS -->
-  </div>
-
-  <div id="results-container"></div>
-
-  <!-- ======= SCRIPT ======= -->
-<script>
-// ======== TICK HISTORY ENGINE ========
-const TF_MAP = {M1:60,M3:180,M5:300,M15:900,M30:1800,M45:2700,H1:3600}; // sec
-const tfs   = ["M1","M3","M5","M15","M30","M45","H1"];
-const MAX_TICKS = 200000;
-
-window._priceHistory = [];
-window._totalTicksEver = 0;
-window._activeTF = "M5";
-
-// --- TradingView price scraping ---
-function startTVPriceScrape() {
-  setInterval(()=>{
-    const wrap = document.querySelector('.tradingview-widget-container');
-    if (!wrap) return;
-    const allSpans = wrap.querySelectorAll('span, div');
-    for(const el of allSpans){
-      const txt = el.textContent.trim().replace(/,/g,'');
-      const val = parseFloat(txt);
-      if(val>1000&&val<20000&&txt.includes('.')){
-        recordPrice(val);
-        updatePriceDisplay(val);
-        break;
+    // ---------- 1. Real-time τιμή από TradingView iframe (scrape) ----------
+    function pollTV() {
+      try {
+        const tv = document.querySelector('.tradingview-widget-container iframe');
+        if (!tv) { setTimeout(pollTV,1000); return; }
+        let lastPrice = 0;
+        setInterval(() => {
+          try {
+            const doc = tv.contentDocument || tv.contentWindow.document;
+            const el = doc.querySelector('[class*="price"]');
+            if (el && el.textContent) {
+              const price = parseFloat(el.textContent.replace(/[^\d.]/g,''));
+              if (price && price > 1000 && price < 30000) {
+                // -- Record tick --
+                if (!window._ticks.length || price !== lastPrice) {
+                  window._ticks.push({price, time: Date.now()});
+                  lastPrice = price;
+                  if (window._ticks.length > MAX_TICKS) window._ticks.shift();
+                  document.getElementById('tick-status').textContent = 
+                    'Ticks: ' + window._ticks.length + ' / ' + MAX_TICKS + 
+                    ' | Last: ' + price.toFixed(2);
+                  runSMCEngine();
+                }
+              }
+            }
+          } catch(e){}
+        }, 1000);
+      } catch(e){
+        setTimeout(pollTV,1000);
       }
     }
-  }, 1000);
-}
-function updatePriceDisplay(val) {
-  const el = document.getElementById('live-price');
-  if(el) el.textContent = val?val.toFixed(2):"";
-  const dot = document.getElementById('tick-dot');
-  if (dot) {
-    dot.style.background = "#00e598";
-    setTimeout(()=>{dot.style.background="#333";},650);
-  }
-}
+    setTimeout(pollTV, 3000);
 
-// --- RECORD ---
-function recordPrice(price) {
-  if (!price || price < 1000) return;
-  window._priceHistory.push({price: price, time: Date.now()});
-  window._totalTicksEver++;
-  if (window._priceHistory.length > MAX_TICKS) window._priceHistory.shift();
-  document.getElementById('history-tick-count').textContent = window._priceHistory.length.toLocaleString('el-GR');
-}
+    // ---------- 2. Candle builder for each TF ----------
+    function buildCandles(tf) {
+      const ms = TIMEFRAMES[tf]*1000, arr = window._ticks;
+      if (!arr.length) return [];
+      const buckets = new Map();
+      for (let t of arr) {
+        const k = Math.floor(t.time / ms) * ms;
+        const b = buckets.get(k) || {open:t.price,close:t.price,low:t.price,high:t.price,vol:1,time:k};
+        b.close = t.price; b.vol++; if(t.price<b.low) b.low=t.price; if(t.price>b.high) b.high=t.price;
+        buckets.set(k, b);
+      }
+      return [...buckets.values()].sort((a,b)=>a.time-b.time);
+    }
 
-// --- OHLCV ENGINE PER TF ---
-function buildCandlesFromHistory(tf) {
-  const history = window._priceHistory;
-  if (history.length < 10) return null;
-  const tfMs = (TF_MAP[tf] || 300)*1000;
-  const bucketMap = new Map();
-  for (let i = 0; i < history.length; i++) {
-    const tick = history[i];
-    const key = Math.floor(tick.time / tfMs) * tfMs;
-    const b = bucketMap.get(key);
-    if (!b) { bucketMap.set(key, {open: tick.price, high: tick.price, low: tick.price, close: tick.price, time: key}); }
-    else {
-      if (tick.price > b.high) b.high = tick.price;
-      if (tick.price < b.low) b.low = tick.price;
-      b.close = tick.price;
+    // ---------- 3. SMC - Order Block finder -----------
+    function findOrderBlocks(candles) {
+      // Πολύ απλή: Bullish όταν αυτό το bearish candle ακολουθείται από συγκριτικό strong bullish move
+      // Bearish το ανάποδο
+      const obs = [];
+      for(let i=2;i<candles.length-2;i++) {
+        // Bullish OB: last bearish candle before a big bullish candle
+        if(candles[i].close < candles[i].open &&
+           candles[i+1].close > candles[i+1].open &&
+           candles[i+1].close > candles[i].open+((candles[i].open-candles[i].close)*1.5)) {
+          obs.push({type:'BULL OB', price:candles[i].low, idx:i});
+        }
+        // Bearish OB: last bullish candle before a big bearish move
+        if(candles[i].close > candles[i].open &&
+           candles[i+1].close < candles[i+1].open &&
+           candles[i+1].close < candles[i].open-((candles[i].close-candles[i].open)*1.5)) {
+          obs.push({type:'BEAR OB', price:candles[i].high, idx:i});
+        }
+      }
+      return obs.slice(-2); // Μεχρι 2 ανά TF
     }
-  }
-  return Array.from(bucketMap.values()).sort((a, b) => a.time - b.time);
-}
 
-// ======== SMC ORDER BLOCK DETECTION ========
-function detectOrderBlocks(candles, minSize=4) {
-  // Bullish: last down candle before strong up move, Bearish: το ανάποδο
-  if (!candles || candles.length < minSize+4) return [];
-  const obs = [];
-  for (let i = 2; i < candles.length - 4; i++) {
-    const c = candles[i], next2 = candles[i+1], after = candles[i+2];
-    // Bullish OB condition: down, then up candles with range + next close > OB high
-    if ((c.close < c.open) && (next2.close > next2.open) && after.close > c.high) {
-      obs.push({idx: i, type: "BULL", price: c.low, label:"Bull OB"});
+    // ---------- 4. FVG - Fair Value Gap finder ----------
+    function findFVGs(candles) {
+      // FVG: gap between last 3 candles, bull if c3.low > c1.high, bear if c3.high < c1.low
+      const fvg = [];
+      for(let i=2;i<candles.length;i++) {
+        const c1=candles[i-2], c2=candles[i-1], c3=candles[i];
+        if (c3.low > c1.high)   fvg.push({type:'BULL FVG', price:c1.high, idx:i});
+        if (c3.high < c1.low)   fvg.push({type:'BEAR FVG', price:c1.low,  idx:i});
+      }
+      return fvg.slice(-2);
     }
-    // Bearish OB: up, then down, next close < OB low
-    else if ((c.close > c.open) && (next2.close < next2.open) && after.close < c.low) {
-      obs.push({idx: i, type: "BEAR", price: c.high, label:"Bear OB"});
-    }
-  }
-  return obs.slice(-5); // τελευταια 5 μόνο
-}
 
-// ======== FVG DETECTOR ========
-function detectFVG(candles) {
-  if (!candles || candles.length < 4) return [];
-  const fvg = [];
-  for (let i = 2; i < candles.length; i++) {
-    const c1 = candles[i-2], c2 = candles[i-1], c3 = candles[i];
-    // Bullish FVG: c3.low > c1.high   || Bearish: c3.high < c1.low
-    if (c1 && c3) {
-      if (c3.low > c1.high) fvg.push({idx:i,type:"BULL",price:c3.low,label:"Bull FVG"});
-      if (c3.high < c1.low) fvg.push({idx:i,type:"BEAR",price:c3.high,label:"Bear FVG"});
+    // ---------- 5. Βρες σημαντικά fractal swings (5-bar) ----------
+    function findFractals(candles) {
+      const hi =[], lo=[];
+      for(let i=2;i<candles.length-2;i++) {
+        if(  candles[i].high > candles[i-2].high && candles[i].high > candles[i-1].high
+          && candles[i].high > candles[i+1].high && candles[i].high > candles[i+2].high)
+          hi.push({idx:i, price:candles[i].high});
+        if(  candles[i].low  < candles[i-2].low  && candles[i].low  < candles[i-1].low
+          && candles[i].low  < candles[i+1].low  && candles[i].low  < candles[i+2].low)
+          lo.push({idx:i, price:candles[i].low});
+      }
+      return {hi,lo};
     }
-  }
-  return fvg.slice(-5);
-}
 
-// ======== FRACTAL PATTERN SIMILARITY ========
-function findSwingPoints(highs, lows, minStrength=3) {
-  const n = highs.length, swings=[];
-  for(let i=minStrength; i<n-minStrength; i++){
-    let isHigh = true, isLow = true;
-    for(let j=1;j<=minStrength;j++){
-      if(highs[i]<=highs[i-j]||highs[i]<=highs[i+j])isHigh=false;
-      if(lows[i]>=lows[i-j]||lows[i]>=lows[i+j])isLow=false;
+    // ---------- 6. Fractal Pattern Similarity Forecast ----------
+    function fractalSimilarityForecast(closes) {
+      if (closes.length < 25) return {dir:'WAIT', target:null, conf:0};
+      // last 10 as pattern, scan whole history for most similar, what happened after
+      const pattern = closes.slice(-10);
+      let bestScore=99, bestIdx=null, afterMove=0;
+      for(let i=0;i<closes.length-20;i++){
+        const window = closes.slice(i,i+10);
+        let score = 0, dsum = 0;
+        for(let j=1;j<10;j++) dsum += Math.abs(window[j]-window[j-1]-(pattern[j]-pattern[j-1]));
+        score = dsum/10;
+        if(score < bestScore) { bestScore=score; bestIdx=i; }
+      }
+      if(bestIdx!==null && closes[bestIdx+15]) {
+        afterMove = closes[bestIdx+15]-closes[bestIdx+9];
+      }
+      return {
+        dir: afterMove>0 ? 'BUY' : afterMove<0 ? 'SELL' : 'WAIT',
+        target: afterMove ? closes[closes.length-1] + afterMove : null,
+        conf:Math.max(0,90-bestScore*40)
+      }
     }
-    if(isHigh) swings.push({idx:i,price:highs[i],type:'H'});
-    if(isLow)  swings.push({idx:i,price:lows[i],type:'L'});
-  }
-  return swings;
-}
-// Pattern repetition & projection
-function findPatternRepetition(closes, lookback=10, historyLen=180) {
-  if (closes.length < lookback + historyLen + 12) return null;
-  const recent = closes.slice(-lookback);
-  const recentNorm = [];
-  for (let i = 1; i < recent.length; i++) recentNorm.push((recent[i]-recent[i-1])/recent[i-1]*100);
-  const recentMean = recentNorm.reduce((a,b)=>a+b,0)/recentNorm.length;
-  const recentStd  = Math.sqrt(recentNorm.reduce((s,v)=>s+(v-recentMean)**2,0)/recentNorm.length)||0.001;
-  let best=null, bestScore=1e9, bestMove=0;
-  for (let s=closes.length-lookback-historyLen-12; s<closes.length-lookback-12; s++){
-    const window = closes.slice(s, s+lookback);
-    const windowNorm=[];
-    for(let i=1;i<window.length;i++)windowNorm.push((window[i]-window[i-1])/window[i-1]*100);
-    const winMean=windowNorm.reduce((a,b)=>a+b,0)/windowNorm.length;
-    const winStd=Math.sqrt(windowNorm.reduce((s,v)=>s+(v-winMean)**2,0)/windowNorm.length)||0.001;
-    let diff=0;
-    for (let i=0;i<recentNorm.length;i++){
-      const rn = (recentNorm[i]-recentMean)/recentStd;
-      const wn = (windowNorm[i]-winMean)/winStd;
-      diff+=(rn-wn)**2;
-    }
-    const score=Math.sqrt(diff/recentNorm.length);
-    if(score<bestScore){
-      bestScore=score;
-      const after=closes.slice(s+lookback,s+lookback+8);
-      bestMove=(after.length>=2)?((after[after.length-1]-after[0])/after[0]*100):0;
-      best={score,bestMove};
-    }
-  }
-  // Clamp similarity scale 0(best)-2(worst) to 100-0
-  const similarity = Math.max(0,Math.min(100,100-bestScore*63))|0;
-  return best?{similarity,direction:best.bestMove>0?"UP":"DOWN",projected:best.bestMove.toFixed(2)+"%"}:null;
-}
 
-// ======== STRATEGY DECISION — SMC+FVG+Fractal ========
-function decideEntry(ob, fvg, fr, price) {
-  // Rules:
+    // ---------- 7. Entry logic per indicator (strict, όχι συνδυασμός score) ----------
+    function evaluateEntry(obs, fvgs, fractal, lastPrice) {
+      // -- Κάθε δείκτης πρέπει να πληρεί τα δικά του σκληρά κριτήρια --
+      let obDir = "WAIT", obAt = 0;
+      if(obs.some(o=>o.type==='BULL OB' && lastPrice>=o.price)) obDir="BUY", obAt=obs.find(o=>o.type==='BULL OB').price;
+      if(obs.some(o=>o.type==='BEAR OB' && lastPrice<=o.price)) obDir="SELL", obAt=obs.find(o=>o.type==='BEAR OB').price;
 
+      let fvgDir = "WAIT", fvgAt=0;
+      if(fvgs.some(f=>f.type==='BULL FVG' && lastPrice>=f.price)) fvgDir="BUY", fvgAt=fvgs.find(f=>f.type==='BULL FVG').price;
+      if(fvgs.some(f=>f.type==='BEAR FVG' && lastPrice<=f.price)) fvgDir="SELL", fvgAt=fvgs.find(f=>f.type==='BEAR FVG').price;
+
+      // Pattern forecast
+      let fracDir = fractal.dir, fracTgt = fractal.target, fracConf=fractal.conf;
+
+      // --- Για να έχουμε entry: και οι 3 δείκτες (OB, FVG, fractal) πρέπει να συμφωνούν ---
+      if(obDir==="BUY" && fvgDir==="BUY" && fracDir==="BUY") return {entry:"BUY", entryPoint:lastPrice, stop:obAt||fvgAt, target:fracTgt, conf:fracConf};
+      if(obDir==="SELL" && fvgDir==="SELL" && fracDir==="SELL") return {entry:"SELL", entryPoint:lastPrice, stop:obAt||fvgAt, target:fracTgt, conf:fracConf};
+      return {entry:"WAIT", entryPoint:"—", stop:"—", target:"—", conf:0};
+    }
+
+    // ---------- 8. Κύρια μηχανή/πίνακας ανά TF ----------
+    function runSMCEngine() {
+      const tfs = Object.keys(TIMEFRAMES);
+      let html = '';
+      for(let tf of tfs) {
+        const candles = buildCandles(tf);
+        if (candles.length < 25) {
+          html += `<div><span class="timeframe-label">${tf}</span> : Συλλογή δεδο��ένων (${candles.length} candles)...</div>`;
+          continue;
+        }
+        // SMC blocks, FVGs, fractal forecast
+        const ob   = findOrderBlocks(candles);
+        const fvg  = findFVGs(candles);
+        const frac = findFractals(candles);
+        const closes = candles.map(c=>c.close);
+        const fractalSim = fractalSimilarityForecast(closes);
+
+        // Entry eval (strict agreement)
+        const res = evaluateEntry(ob, fvg, fractalSim, closes[closes.length-1]);
+
+        html += `<table class="engine-table">
+        <tr><th colspan=6 style="text-align:left;font-size:14px;">${tf} timeframe</th></tr>
+        <tr>
+        <th>Last price</th>
+        <th>Order Block</th>
+        <th>FVG</th>
+        <th>Fractal Sim.</th>
+        <th>ENTRY DECISION</th>
+        <th>SL/TP</th>
+        </tr>
+        <tr>
+        <td>${closes[closes.length-1].toFixed(2)}</td>
+        <td>${ob.map(o=>o.type+': '+o.price.toFixed(2)).join('<br>')||'—'}</td>
+        <td>${fvg.map(f=>f.type+': '+f.price.toFixed(2)).join('<br>')||'—'}</td>
+        <td>${fractalSim.dir} → ${fractalSim.target?fractalSim.target.toFixed(2):'—'}<br>Conf:${fractalSim.conf}%</td>
+        <td class="${res.entry==='BUY'?'buy':res.entry==='SELL'?'sell':'wait'}">${res.entry}</td>
+        <td>
+          SL:${res.stop!=="—"?(res.entry==='BUY'?('<span style=color:#ff4060;>'+(res.entryPoint-res.stop).toFixed(2)+'</span>'):(res.entry==='SELL'?('<span style=color:#ff4060;>'+(res.stop-res.entryPoint).toFixed(2)+'</span>'):''):'—'}<br>
+          TP:${res.target&&res.target!=="—"?('<span style=color:#00e5a0;>'+res.target.toFixed(2)+'</span>'):'—'}
+        </td>
+        </tr></table>`;
+      }
+      document.getElementById('smc-tables').innerHTML = html;
+    }
+  </script>
+</body>
+</html>
