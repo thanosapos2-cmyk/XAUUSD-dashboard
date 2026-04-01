@@ -2,7 +2,7 @@
 <html lang="el">
 <head>
 <meta charset="UTF-8">
-<title>XAUUSD REAL-TIME TICK COLLECTOR</title>
+<title>XAUUSD SMC STRICT - ORIGINAL METHOD</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -12,165 +12,153 @@
     * { margin:0; padding:0; box-sizing:border-box; }
     body { background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; padding: 20px; }
 
-    /* TICKER TAPE - ΤΟ ΧΡΗΣΙΜΟΠΟΙΟΥΜΕ ΓΙΑ ΤΗΝ ΑΝΤΛΗΣΗ ΤΩΝ TICKS */
-    #ticker-wrapper {
-        background: var(--surface); border: 1px solid var(--border); margin-bottom: 15px; height: 46px; overflow: hidden;
+    /* ΤΟ WIDGET ΣΟΥ - ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΟΡΑΤΟ ΓΙΑ ΝΑ ΓΙΝΕΤΑΙ ΤΟ SCRAPE */
+    #widget-target {
+        width: 100%; height: 80px; margin-bottom: 20px; border: 1px solid var(--border); overflow: hidden;
     }
 
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 15px; }
-    .price-box { font-family: 'Orbitron'; font-size: 28px; color: var(--gold); font-weight: 900; }
-    .tick-stats { text-align: right; font-size: 12px; }
+    .info-header { display: flex; gap: 30px; background: var(--surface); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px; }
+    .live-val { font-family: 'Orbitron'; font-size: 24px; color: var(--gold); }
+    .label { font-size: 10px; color: var(--muted); display: block; text-transform: uppercase; }
 
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
-    .tf-name { font-family: 'Orbitron'; color: var(--gold); font-size: 18px; margin-bottom: 15px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; border-top: 4px solid var(--border); }
+    .tf-title { font-family: 'Orbitron'; color: var(--gold); margin-bottom: 15px; font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
 
-    .logic-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    .logic-table td { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
-
-    .decision-panel { padding: 15px; border-radius: 6px; text-align: center; font-family: 'Orbitron'; border: 2px solid var(--border); }
+    .metric-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 13px; }
+    
+    .decision-box { margin-top: 20px; padding: 15px; border-radius: 8px; text-align: center; font-family: 'Orbitron'; border: 2px solid var(--border); }
     .BUY { border-color: var(--green); color: var(--green); background: rgba(0,229,160,0.05); }
     .SELL { border-color: var(--red); color: var(--red); background: rgba(255,64,96,0.05); }
-    .WAIT { color: var(--muted); opacity: 0.6; }
-
-    .tag { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 3px; background: var(--border); }
+    .WAIT { color: var(--muted); border-style: dashed; }
 </style>
 </head>
 <body>
 
-<div id="ticker-wrapper">
+<div id="widget-target">
     <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-        {
-          "symbols": [{ "proName": "FX_IDC:XAUUSD", "title": "GOLD" }],
-          "colorTheme": "dark", "isTransparent": true, "displayMode": "regular", "locale": "en"
-        }
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+        { "symbol": "FX_IDC:XAUUSD", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "en" }
         </script>
     </div>
 </div>
 
-<div class="header">
-    <div class="price-box" id="live-price">WAITING FOR TICK...</div>
-    <div class="tick-stats">
-        <span class="label">REAL TICK DATABASE</span>
-        <div id="tick-count" style="font-size: 18px; color: var(--text)">0</div>
-    </div>
+<div class="info-header">
+    <div><span class="label">LIVE XAUUSD</span><div id="price-display" class="live-val">WAITING...</div></div>
+    <div><span class="label">TICK MEMORY</span><div id="tick-count" class="live-val" style="color:var(--text)">0</div></div>
 </div>
 
 <div class="grid" id="dashboard"></div>
 
 <script>
-let ticks = [];
+let tickHistory = [];
 const MAX_TICKS = 200000;
-const timeframes = ['M1', 'M5', 'M15', 'M30', 'H1'];
+const TFs = ['M1', 'M5', 'M15', 'M30', 'H1'];
 const TF_SEC = { M1: 60, M5: 300, M15: 900, M30: 1800, H1: 3600 };
 
-// --- SCRAPER: ΠΑΙΡΝΕΙ ΤΗΝ ΤΙΜΗ ΑΠΕΥΘΕΙΑΣ ΑΠΟ ΤΟ WIDGET ---
-function collectTicks() {
-    // Στο Ticker Tape, η τιμή βρίσκεται πάντα σε αυτό το class
-    const priceElement = document.querySelector('.tv-ticker-item-last__text');
-    
-    if (priceElement) {
-        const rawValue = priceElement.innerText.replace(/,/g, '');
-        const currentPrice = parseFloat(rawValue);
+// --- Ο ΤΡΟΠΟΣ ΣΟΥ: SCRAPING ΑΠΟ ΤΟ WIDGET ---
+function scrapePrice() {
+    // Στοχεύουμε όλα τα spans μέσα στο widget container
+    const spans = document.querySelectorAll('#widget-target span');
+    let currentPrice = null;
 
-        if (!isNaN(currentPrice) && currentPrice > 0) {
-            const lastStored = ticks.length > 0 ? ticks[ticks.length - 1].p : 0;
-            
-            // Καταγραφή μόνο αν η τιμή άλλαξε (Πραγματικό Tick)
-            if (currentPrice !== lastStored) {
-                ticks.push({ p: currentPrice, t: Date.now() });
-                if (ticks.length > MAX_TICKS) ticks.shift();
+    spans.forEach(s => {
+        const txt = s.innerText.replace(/,/g, '');
+        const num = parseFloat(txt);
+        // Έλεγχος αν είναι η τιμή του χρυσού
+        if (!isNaN(num) && num > 1000 && txt.includes('.')) {
+            currentPrice = num;
+        }
+    });
 
-                document.getElementById('live-price').innerText = currentPrice.toFixed(2);
-                document.getElementById('tick-count').innerText = ticks.length.toLocaleString();
-            }
+    if (currentPrice) {
+        const now = Date.now();
+        // Καταγραφή μόνο πραγματικής αλλαγής (Real Tick)
+        if (tickHistory.length === 0 || tickHistory[tickHistory.length - 1].p !== currentPrice) {
+            tickHistory.push({ p: currentPrice, t: now });
+            if (tickHistory.length > MAX_TICKS) tickHistory.shift();
+
+            document.getElementById('price-display').innerText = currentPrice.toFixed(2);
+            document.getElementById('tick-count').innerText = tickHistory.length.toLocaleString();
         }
     }
 }
 
 // --- SMC LOGIC (Strict) ---
-function analyzeSMC(tf) {
+function analyze(tf) {
     const candles = buildCandles(tf);
-    if (candles.length < 10) return { decision: 'WAIT', ob: 'Collecting...', fvg: 'Collecting...', frac: 'Collecting...' };
+    if (candles.length < 10) return { decision: 'WAIT', note: 'Collecting...' };
 
     const last = candles[candles.length - 1];
     const prev = candles[candles.length - 2];
     const p3 = candles[candles.length - 3];
 
-    // 1. Order Block (Strict)
-    const bullOB = candles.slice(-10, -2).find(c => c.close < c.open && candles[candles.length-2].close > c.high);
-    const bearOB = candles.slice(-10, -2).find(c => c.close > c.open && candles[candles.length-2].close < c.low);
+    // 1. Order Block
+    const obBull = candles.slice(-10, -2).find(c => c.close < c.open && candles[candles.length-2].close > c.high);
+    const obBear = candles.slice(-10, -2).find(c => c.close > c.open && candles[candles.length-2].close < c.low);
 
-    // 2. Fair Value Gap (FVG)
-    const isBullFVG = prev.low > p3.high;
-    const isBearFVG = prev.high < p3.low;
+    // 2. FVG (Imbalance)
+    const fvgBull = prev.low > p3.high;
+    const fvgBear = prev.high < p3.low;
 
-    // 3. Fractal Similarity (Confirming Pivot)
-    const isBottom = prev.low < p3.low && prev.low < last.low;
-    const isTop = prev.high > p3.high && prev.high > last.high;
+    // 3. Fractal Similarity
+    const fracBull = prev.low < p3.low && prev.low < last.low;
+    const fracBear = prev.high > p3.high && prev.high > last.high;
 
     let decision = 'WAIT';
-    if (bullOB && isBullFVG && isBottom) decision = 'BUY';
-    if (bearOB && isBearFVG && isTop) decision = 'SELL';
+    if (obBull && fvgBull && fracBull) decision = 'BUY';
+    if (obBear && fvgBear && fracBear) decision = 'SELL';
 
     return {
         decision,
-        ob: bullOB ? 'BULL OB' : (bearOB ? 'BEAR OB' : 'NONE'),
-        fvg: isBullFVG ? 'BULL FVG' : (isBearFVG ? 'BEAR FVG' : 'NONE'),
-        frac: isBottom ? 'BULLISH' : (isTop ? 'BEARISH' : 'NEUTRAL')
+        ob: obBull || obBear ? 'DETECTED' : 'NONE',
+        fvg: fvgBull ? 'BULLISH' : (fvgBear ? 'BEARISH' : 'NONE'),
+        frac: fracBull ? 'BULLISH' : (fracBear ? 'BEARISH' : 'NEUTRAL')
     };
 }
 
 function buildCandles(tf) {
-    const period = TF_SEC[tf] * 1000;
-    const result = [];
-    if (ticks.length === 0) return [];
-
-    let current = null;
-    ticks.forEach(tick => {
-        const bucket = Math.floor(tick.t / period) * period;
-        if (!current || current.time !== bucket) {
-            if (current) result.push(current);
-            current = { time: bucket, open: tick.p, high: tick.p, low: tick.p, close: tick.p };
+    const ms = TF_SEC[tf] * 1000;
+    const res = [];
+    if (tickHistory.length === 0) return [];
+    let cur = null;
+    tickHistory.forEach(t => {
+        const b = Math.floor(t.t / ms) * ms;
+        if (!cur || cur.time !== b) {
+            if (cur) res.push(cur);
+            cur = { time: b, open: t.p, high: t.p, low: t.p, close: t.p };
         } else {
-            current.high = Math.max(current.high, tick.p);
-            current.low = Math.min(current.low, tick.p);
-            current.close = tick.p;
+            cur.high = Math.max(cur.high, t.p);
+            cur.low = Math.min(cur.low, t.p);
+            cur.close = t.p;
         }
     });
-    return result;
+    return res;
 }
 
 function updateUI() {
     const dash = document.getElementById('dashboard');
     let html = '';
-
-    timeframes.forEach(tf => {
-        const data = analyzeSMC(tf);
+    TFs.forEach(tf => {
+        const data = analyze(tf);
         html += `
             <div class="card">
-                <div class="tf-name">${tf} FRAME</div>
-                <table class="logic-table">
-                    <tr><td class="label">SMC Order Block</td><td align="right"><span class="tag">${data.ob}</span></td></tr>
-                    <tr><td class="label">Imbalance (FVG)</td><td align="right"><span class="tag">${data.fvg}</span></td></tr>
-                    <tr><td class="label">Fractal Pattern</td><td align="right"><span class="tag">${data.frac}</span></td></tr>
-                </table>
-                <div class="decision-panel ${data.decision}">
-                    <div style="font-size: 10px; margin-bottom: 5px;">STRICT SIGNAL</div>
-                    <div style="font-size: 24px; font-weight: 900;">${data.decision}</div>
+                <div class="tf-title">${tf} FRAME</div>
+                <div class="metric-row"><span>Order Block</span><b>${data.ob}</b></div>
+                <div class="metric-row"><span>FVG Imbalance</span><b>${data.fvg}</b></div>
+                <div class="metric-row"><span>Fractal Similarity</span><b>${data.frac}</b></div>
+                <div class="decision-box ${data.decision}">
+                    <div style="font-size: 22px; font-weight: 900;">${data.decision}</div>
                 </div>
-            </div>
-        `;
+            </div>`;
     });
     dash.innerHTML = html;
 }
 
-// SCANNING LOOP
-setInterval(collectTicks, 500); // Διαβάζει το widget κάθε 0.5 δευτερόλεπτο
-setInterval(updateUI, 1500);   // Ανανεώνει το dashboard κάθε 1.5 δευτερόλεπτο
+// LOOP
+setInterval(scrapePrice, 1000);
+setInterval(updateUI, 2000);
 </script>
 </body>
 </html>
