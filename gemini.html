@@ -2,8 +2,7 @@
 <html lang="el">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XAUUSD SMC DOM-Scraper Engine</title>
+<title>XAUUSD SMC ULTRA STRICT</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -13,184 +12,210 @@
     * { margin:0; padding:0; box-sizing:border-box; }
     body { background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; padding: 20px; }
 
+    /* HEADER */
     .header { display: flex; justify-content: space-between; align-items: center; background: var(--surface); border: 1px solid var(--border); padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; }
     .logo { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 900; color: var(--gold); }
+    .live-data { display: flex; gap: 30px; }
+    .stat-box { text-align: right; }
+    .stat-label { font-size: 10px; color: var(--muted); display: block; }
+    .stat-val { font-family: 'Orbitron'; font-size: 18px; font-weight: 700; color: var(--text); }
 
-    /* TRADINGVIEW WIDGET CONTAINER - HIDDEN BUT ACTIVE */
-    #tv-scraper-container {
-        position: absolute; left: -10000px; top: 0; width: 200px; height: 200px; overflow: hidden;
+    /* WIDGET - ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΟΡΑΤΟ ΓΙΑ ΝΑ ΓΙΝΕΤΑΙ ΤΟ SCRAPE */
+    #scraper-container {
+        position: fixed; bottom: 0; right: 0; width: 150px; height: 60px; z-index: -1; opacity: 0.01;
     }
 
-    .tf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px; }
-    .tf-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 15px; }
-    .tf-title { font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--gold); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 10px; }
+    /* GRID */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 15px; display: flex; flex-direction: column; }
+    .tf-title { font-family: 'Orbitron'; font-size: 16px; color: var(--gold); margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
 
-    .tf-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    .tf-table td { padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .label { color: var(--muted); font-size: 11px; }
+    /* TABLE */
+    .data-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 12px; }
+    .data-table td { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .td-label { color: var(--muted); width: 50%; }
+    .td-val { text-align: right; font-weight: bold; }
 
-    .decision-box { padding: 15px; border-radius: 6px; text-align: center; border: 1px solid var(--border); }
-    .BUY { border-color: var(--green); background: rgba(0, 229, 160, 0.1); color: var(--green); }
-    .SELL { border-color: var(--red); background: rgba(255, 64, 96, 0.1); color: var(--red); }
-    .WAIT { color: var(--muted); }
+    /* DECISION */
+    .decision-area { margin-top: auto; padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--border); transition: all 0.3s; }
+    .BUY { border-color: var(--green); background: rgba(0, 229, 160, 0.05); color: var(--green); }
+    .SELL { border-color: var(--red); background: rgba(255, 64, 96, 0.05); color: var(--red); }
+    .WAIT { border-color: var(--border); color: var(--muted); }
 
-    .stats { display: flex; gap: 20px; }
-    .stat-item { text-align: right; }
-    .val { font-family: 'Orbitron'; font-weight: 700; display: block; }
+    .target-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; font-size: 11px; }
+    .t-item { background: rgba(0,0,0,0.2); padding: 5px; border-radius: 4px; }
 </style>
 </head>
 <body>
 
 <div class="header">
-    <div class="logo">XAUUSD PRO DOM-SMC</div>
-    <div class="stats">
-        <div class="stat-item"><span class="label">LIVE PRICE</span><span id="live-price" class="val">LOADING...</span></div>
-        <div class="stat-item"><span class="label">TICKS</span><span id="tick-count" class="val">0</span></div>
+    <div class="logo">XAUUSD STRICT SMC ENGINE</div>
+    <div class="live-data">
+        <div class="stat-box"><span class="stat-label">REAL-TIME PRICE</span><span id="price-display" class="stat-val">CONNECTING...</span></div>
+        <div class="stat-box"><span class="stat-label">TICK HISTORY</span><span id="tick-display" class="stat-val">0 / 200,000</span></div>
     </div>
 </div>
 
-<div id="tv-scraper-container">
+<div id="scraper-container">
     <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
         <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
-        { "symbol": "FX_IDC:XAUUSD", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "en" }
+        { "symbol": "OANDA:XAUUSD", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "en" }
         </script>
     </div>
 </div>
 
-<div class="tf-grid" id="main-grid"></div>
+<div class="grid" id="dashboard"></div>
 
 <script>
-// --- CONFIG & GLOBALS ---
+// --- GLOBAL SETTINGS ---
 const MAX_TICKS = 200000;
-let tickHistory = [];
-const timeframes = ['M1', 'M5', 'M15', 'M30', 'H1'];
-const TF_SECONDS = { M1: 60, M5: 300, M15: 900, M30: 1800, H1: 3600 };
+let ticks = [];
+const TFs = ['M1', 'M5', 'M15', 'M30', 'H1'];
+const TF_SEC = { M1: 60, M5: 300, M15: 900, M30: 1800, H1: 3600 };
 
-// --- DOM SCRAPER ENGINE ---
-function initDomScraper() {
-    const targetNode = document.getElementById('tv-scraper-container');
-    const observer = new MutationObserver(() => {
-        // Ψάχνουμε για την τιμή μέσα στο widget shadow/iframe structure
-        const priceElement = targetNode.querySelector('.tv-embed-widget-wrapper__body span[class*="last"], .tradingview-widget-container span');
-        if (priceElement) {
-            const rawPrice = priceElement.innerText.replace(/,/g, '');
-            const price = parseFloat(rawPrice);
-            if (!isNaN(price) && price > 0) {
-                processNewTick(price);
+// --- DOM SCRAPER (THE RELIABLE WAY) ---
+function startScraper() {
+    setInterval(() => {
+        const container = document.getElementById('scraper-container');
+        // Ψάχνουμε σε όλο το subtree του widget για κάτι που μοιάζει με τιμή Χρυσού (π.χ. 2345.67)
+        const allElements = container.querySelectorAll('*');
+        for (let el of allElements) {
+            if (el.children.length === 0) { // Μόνο leaf nodes
+                const val = el.innerText.replace(/,/g, '');
+                const price = parseFloat(val);
+                if (!isNaN(price) && price > 1000 && price < 5000) {
+                    onNewPrice(price);
+                    break; 
+                }
             }
         }
-    });
-    observer.observe(targetNode, { childList: true, subtree: true, characterData: true });
+    }, 500); // Check κάθε 500ms για αλλαγή
 }
 
-function processNewTick(price) {
+function onNewPrice(price) {
     const now = Date.now();
-    tickHistory.push({ p: price, t: now });
-    if (tickHistory.length > MAX_TICKS) tickHistory.shift();
+    // Αποφυγή διπλότυπων ticks στην ίδια τιμή/χρόνο
+    if (ticks.length > 0 && ticks[ticks.length-1].p === price) return;
 
-    document.getElementById('live-price').innerText = price.toFixed(2);
-    document.getElementById('tick-count').innerText = tickHistory.length.toLocaleString();
+    ticks.push({ p: price, t: now });
+    if (ticks.length > MAX_TICKS) ticks.shift();
+
+    document.getElementById('price-display').innerText = price.toFixed(2);
+    document.getElementById('tick-display').innerText = ticks.length.toLocaleString();
 }
 
-// --- SMC LOGIC (Strict) ---
-function analyzeSMC(tf) {
+// --- SMC LOGIC & ANALYTICS ---
+function analyzeTimeframe(tf) {
     const candles = buildCandles(tf);
-    if (candles.length < 20) return { decision: 'WAIT' };
+    if (candles.length < 20) return { status: 'WAIT', reason: 'Insufficient Data' };
 
     const last = candles[candles.length - 1];
     const prev = candles[candles.length - 2];
-    const p3 = candles[candles.length - 3];
-    
-    // 1. Order Block (OB) - Last opposite candle before Break of Structure
-    let obBull = candles.slice(-15, -5).find(c => c.close < c.open && candles[candles.length-2].close > c.high);
-    let obBear = candles.slice(-15, -5).find(c => c.close > c.open && candles[candles.length-2].close < c.low);
+    const prev2 = candles[candles.length - 3];
 
-    // 2. FVG (Fair Value Gap)
-    const fvgBull = last.low > p3.high;
-    const fvgBear = last.high < p3.low;
+    // 1. ORDER BLOCKS (OB)
+    // Bullish OB: Last down candle before strong move up
+    let bullOB = candles.slice(-15, -3).filter(c => c.close < c.open && candles[candles.length-2].close > c.high).pop();
+    // Bearish OB: Last up candle before strong move down
+    let bearOB = candles.slice(-15, -3).filter(c => c.close > c.open && candles[candles.length-2].close < c.low).pop();
 
-    // 3. Fractal Pattern Similarity
-    const isFractalLow = prev.low < candles[candles.length-3].low && prev.low < last.low;
-    const isFractalHigh = prev.high > candles[candles.length-3].high && prev.high > last.high;
+    // 2. FAIR VALUE GAPS (FVG)
+    const bullFVG = prev.low > prev2.high; 
+    const bearFVG = prev.high < prev2.low;
 
-    // Independent Requirements Check
+    // 3. FRACTAL PATTERN SIMILARITY (Similarity Logic)
+    // Ανιχνεύουμε αν το τρέχον structure μοιάζει με fractal αντιστροφής
+    const fractalUp = prev.high > prev2.high && prev.high > last.high;
+    const fractalDown = prev.low < prev2.low && prev.low < last.low;
+
+    // --- STRICT CONFLUENCE CHECK ---
     let decision = 'WAIT';
-    let sl = 0, tp = 0;
-    const atr = (last.high - last.low) * 2;
+    let entry = 0, sl = 0, tp = 0;
+    const atr = (last.high - last.low) || 0.5;
 
-    if (obBull && fvgBull && isFractalLow) {
+    // BUY CONDITION: OB FOUND + FVG SUPPORT + FRACTAL CONFIRMATION
+    if (bullOB && bullFVG && fractalDown) {
         decision = 'BUY';
-        sl = obBull.low - (atr * 0.5);
-        tp = last.close + (atr * 3);
-    } else if (obBear && fvgBear && isFractalHigh) {
+        entry = last.close;
+        sl = bullOB.low - (atr * 1.5);
+        tp = entry + ((entry - sl) * 2.5); // Fixed Risk/Reward based on Fractal Similarity
+    } 
+    // SELL CONDITION: OB FOUND + FVG RESISTANCE + FRACTAL CONFIRMATION
+    else if (bearOB && bearFVG && fractalUp) {
         decision = 'SELL';
-        sl = obBear.high + (atr * 0.5);
-        tp = last.close - (atr * 3);
+        entry = last.close;
+        sl = bearOB.high + (atr * 1.5);
+        tp = entry - ((sl - entry) * 2.5);
     }
 
     return {
-        decision, 
-        ob: obBull ? 'BULL OB FOUND' : (obBear ? 'BEAR OB FOUND' : 'NONE'),
-        fvg: fvgBull ? 'BULL FVG' : (fvgBear ? 'BEAR FVG' : 'NONE'),
-        fractal: isFractalLow ? 'BULL FRACTAL' : (isFractalHigh ? 'BEAR FRACTAL' : 'NONE'),
-        sl: sl.toFixed(2),
-        tp: tp.toFixed(2)
+        decision,
+        ob: bullOB ? 'BULL OB' : (bearOB ? 'BEAR OB' : 'NONE'),
+        fvg: bullFVG ? 'ACTIVE BULL' : (bearFVG ? 'ACTIVE BEAR' : 'NONE'),
+        fractal: fractalDown ? 'BULLISH PATTERN' : (fractalUp ? 'BEARISH PATTERN' : 'NEUTRAL'),
+        entry, sl, tp
     };
 }
 
 function buildCandles(tf) {
-    const period = TF_SECONDS[tf] * 1000;
-    const candles = [];
-    if (tickHistory.length === 0) return [];
+    const span = TF_SEC[tf] * 1000;
+    const result = [];
+    if (ticks.length === 0) return [];
 
-    let currentCandle = null;
-    tickHistory.forEach(tick => {
-        const bucket = Math.floor(tick.t / period) * period;
-        if (!currentCandle || currentCandle.time !== bucket) {
-            if (currentCandle) candles.push(currentCandle);
-            currentCandle = { time: bucket, open: tick.p, high: tick.p, low: tick.p, close: tick.p };
+    let current = null;
+    ticks.forEach(t => {
+        const bucket = Math.floor(t.t / span) * span;
+        if (!current || current.time !== bucket) {
+            if (current) result.push(current);
+            current = { time: bucket, open: t.p, high: t.p, low: t.p, close: t.p };
         } else {
-            currentCandle.high = Math.max(currentCandle.high, tick.p);
-            currentCandle.low = Math.min(currentCandle.low, tick.p);
-            currentCandle.close = tick.p;
+            current.high = Math.max(current.high, t.p);
+            current.low = Math.min(current.low, t.p);
+            current.close = t.p;
         }
     });
-    return candles;
+    return result;
 }
 
-// --- UI ENGINE ---
-function updateUI() {
-    const grid = document.getElementById('main-grid');
+// --- UI REFRESH ---
+function updateDashboard() {
+    const dash = document.getElementById('dashboard');
     let html = '';
 
-    timeframes.forEach(tf => {
-        const res = analyzeSMC(tf);
+    TFs.forEach(tf => {
+        const data = analyzeTimeframe(tf);
+        const decClass = data.decision;
+        
         html += `
-            <div class="tf-card">
-                <div class="tf-title">${tf} Analysis</div>
-                <table class="tf-table">
-                    <tr><td class="label">Order Block</td><td>${res.ob || 'Searching...'}</td></tr>
-                    <tr><td class="label">FVG Detection</td><td>${res.fvg || 'Searching...'}</td></tr>
-                    <tr><td class="label">Fractal Pattern</td><td>${res.fractal || 'Searching...'}</td></tr>
+            <div class="card">
+                <div class="tf-title">${tf} TIME-FRAME</div>
+                <table class="data-table">
+                    <tr><td class="td-label">Order Block (SMC)</td><td class="td-val">${data.ob}</td></tr>
+                    <tr><td class="td-label">Fair Value Gap</td><td class="td-val">${data.fvg}</td></tr>
+                    <tr><td class="td-label">Fractal Similarity</td><td class="td-val">${data.fractal}</td></tr>
                 </table>
-                <div class="decision-box ${res.decision}">
-                    <div style="font-size:20px; font-weight:900;">${res.decision}</div>
-                    ${res.decision !== 'WAIT' ? `
-                        <div style="margin-top:10px; font-size:12px;">
-                            TP: <span class="c-green">${res.tp}</span> | SL: <span class="c-red">${res.sl}</span>
+                <div class="decision-area ${decClass}">
+                    <div style="font-size:10px; opacity:0.6">FINAL DECISION</div>
+                    <div style="font-size:24px; font-weight:900">${data.decision}</div>
+                    
+                    ${data.decision !== 'WAIT' ? `
+                        <div class="target-box">
+                            <div class="t-item">ENTRY: ${data.entry.toFixed(2)}</div>
+                            <div class="t-item">S/L: ${data.sl.toFixed(2)}</div>
+                            <div class="t-item" style="grid-column: span 2; color:var(--green)">PROFIT TARGET: ${data.tp.toFixed(2)}</div>
                         </div>
-                    ` : '<div style="font-size:10px;">Waiting for Strict Confluence...</div>'}
+                    ` : '<div style="margin-top:10px; font-size:10px">Searching for 3-Point Confluence...</div>'}
                 </div>
             </div>
         `;
     });
-    grid.innerHTML = html;
+    dash.innerHTML = html;
 }
 
-// Initialization
-initDomScraper();
-setInterval(updateUI, 1000);
+// START ENGINE
+startScraper();
+setInterval(updateDashboard, 1000);
 </script>
 </body>
 </html>
