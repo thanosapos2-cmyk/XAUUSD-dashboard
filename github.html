@@ -1,231 +1,683 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-<meta charset="UTF-8">
-<title>XAUUSD SMC FVG FRACTAL Engine</title>
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>XAUUSD SMC · FVG · Fractal Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
-body { background: #050709; color: #d2dde8; font-family: 'Share Tech Mono', monospace; margin:0; padding:0; }
-h1 { font-family: 'Orbitron',sans-serif; color: #f5c842; letter-spacing:4px;}
-.engine-table { width:100%; border-collapse:collapse; background:#0b1018; margin-bottom:30px;}
-.engine-table th, .engine-table td { border:1px solid #1c2a3a; padding:8px 10px; font-size:12px; text-align:left;}
-.engine-table th { background: #101826; color: #f5c842; font-family:'Orbitron',sans-serif; font-size:12px;}
-.engine-table .buy   { color:#00e5a0; font-weight:bold;}
-.engine-table .sell  { color:#ff4060; font-weight:bold;}
-.engine-table .wait  { color:#3de0ff; font-weight:bold;}
-.engine-table td:last-child { font-family:'Orbitron',monospace; }
-.stat { display:inline-block; min-width:98px;}
-.timeframe-label { color:#f5c842; font-size:16px; font-family:'Orbitron',sans-serif; }
+:root{
+  --bg:#050709; --panel:#0b1018; --border:#1c2a3a; --gold:#f5c842; --text:#c8d8e8; --muted:#5a7090; --green:#00e5a0; --red:#ff4060; --blue:#3de0ff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Rajdhani,system-ui;min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:rgba(5,7,9,0.9);border-bottom:1px solid var(--border)}
+.logo{font-family:Orbitron,monospace;color:var(--gold);font-weight:900;letter-spacing:2px}
+.container{padding:18px;max-width:1200px;margin:0 auto}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+.tf-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.tf-btn{padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--panel);color:var(--muted);cursor:pointer}
+.tf-btn.active{background:linear-gradient(135deg,var(--gold),#e8a020);color:#000;border-color:var(--gold)}
+.panel{background:var(--panel);border:1px solid var(--border);padding:14px;border-radius:8px}
+.table{width:100%;border-collapse:collapse;font-family:Share Tech Mono,monospace;font-size:13px;color:var(--text)}
+.table th{background:rgba(255,255,255,0.02);padding:8px;border-bottom:1px solid rgba(255,255,255,0.04);text-align:left;color:var(--muted)}
+.table td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.03)}
+.badge{padding:4px 8px;border-radius:4px;font-weight:700}
+.badge.buy{background:rgba(0,229,160,0.12);color:var(--green);border:1px solid rgba(0,229,160,0.18)}
+.badge.sell{background:rgba(255,64,96,0.12);color:var(--red);border:1px solid rgba(255,64,96,0.18)}
+.badge.wait{background:rgba(255,255,255,0.03);color:var(--muted)}
+.small{font-size:12px;color:var(--muted)}
+.info-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.spark{height:34px;border-radius:6px;width:100%}
+.notice{font-family:Share Tech Mono,monospace;color:var(--muted);font-size:12px;margin-top:8px}
 </style>
 </head>
 <body>
-  <h1>XAUUSD PRO – SMC/FVG/FRACTAL Engine</h1>
-  <div id="tv-widget-container" style="margin-bottom:18px;">
-    <!-- TradingView Single Quote widget for scrape-tick feed -->
-    <div class="tradingview-widget-container">
-      <div class="tradingview-widget-container__widget"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async defer>
-      {
-        "symbol": "OANDA:XAUUSD",
-        "width": "300",
-        "colorTheme": "dark",
-        "isTransparent": true,
-        "locale": "en"
-      }
-      </script>
+  <header class="header">
+    <div class="logo">XAU/USD · SMC SCANNER</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div id="tv-widget-wrap" style="min-width:260px">
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async defer>
+          {
+            "symbol": "OANDA:XAUUSD",
+            "width": "100%",
+            "colorTheme": "dark",
+            "isTransparent": true,
+            "locale": "en"
+          }
+          </script>
+        </div>
+      </div>
+      <div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--muted)">
+        Live price:
+        <span id="live-price" style="font-weight:900;color:var(--gold);margin-left:6px">—</span>
+      </div>
     </div>
-  </div>
-  <div id="tick-status" style="font-family:'Share Tech Mono',monospace; color:#f5c842;margin-bottom:8px;">Ticks: 0 / 200,000</div>
-  <div id="smc-tables"></div>
-  <script>
-    // -------- Οι μοναδικές σου global μεταβλητές --------
-    window._ticks    = []; // {price, time}
-    const MAX_TICKS  = 200000;
-    const TIMEFRAMES = {M1:60, M3:180, M5:300, M15:900, M30:1800, M45:2700, H1:3600};
+  </header>
 
-    // ---------- 1. Real-time τιμή από TradingView iframe (scrape) ----------
-    function pollTV() {
-      try {
-        const tv = document.querySelector('.tradingview-widget-container iframe');
-        if (!tv) { setTimeout(pollTV,1000); return; }
-        let lastPrice = 0;
-        setInterval(() => {
-          try {
-            const doc = tv.contentDocument || tv.contentWindow.document;
-            const el = doc.querySelector('[class*="price"]');
-            if (el && el.textContent) {
-              const price = parseFloat(el.textContent.replace(/[^\d.]/g,''));
-              if (price && price > 1000 && price < 30000) {
-                // -- Record tick --
-                if (!window._ticks.length || price !== lastPrice) {
-                  window._ticks.push({price, time: Date.now()});
-                  lastPrice = price;
-                  if (window._ticks.length > MAX_TICKS) window._ticks.shift();
-                  document.getElementById('tick-status').textContent = 
-                    'Ticks: ' + window._ticks.length + ' / ' + MAX_TICKS + 
-                    ' | Last: ' + price.toFixed(2);
-                  runSMCEngine();
-                }
-              }
-            }
-          } catch(e){}
-        }, 1000);
-      } catch(e){
-        setTimeout(pollTV,1000);
-      }
+  <main class="container">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px">
+      <div>
+        <div style="font-weight:700;font-family:Orbitron,monospace">SMC · FVG · FRACTAL · SIMILARITY</div>
+        <div class="small">Ανάλυση order blocks + FVG + fractal pattern similarity ανά timeframe — ξεχωριστές αποφάσεις/δείκτες</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="small">Ticks stored:</div>
+        <div id="tick-count" style="font-weight:700;color:var(--gold)">0</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="tf-row" id="tf-buttons"></div>
+      <div class="notice">Σημείωση: Το widget TradingView χρησιμοποιείται για live τιμές. Το σύστημα διαβάζει τιμές από το DOM του iframe (scrape) και καταγράφει ticks έως 200.000.</div>
+    </div>
+
+    <div id="results" class="grid" style="margin-top:12px"></div>
+
+    <div style="margin-top:18px" class="small">
+      Η λογική:
+      <ul>
+        <li>Order Block detection: localized institutional blocks (bullish/bearish) και retest detection.</li>
+        <li>FVG: unfilled fair-value gaps (3-candle imbalances) — χρησιμοποιούνται ως entry/zones.</li>
+        <li>Fractal similarity: historical pattern matching υπολογίζει ποια πιθανή κίνηση θα ακολουθήσει (similarity % + predicted move).</li>
+        <li>Κάθε δείκτης δίνει ξεχωριστή σύσταση και entry/SL/TP. Τελική πρόταση: OB + (FVG OR FractalHigh) ⇒ strong entry.</li>
+      </ul>
+    </div>
+  </main>
+
+<script>
+/* ============================================================
+   ΠΕΡΙΛΗΨΗ ΛΕΙΤΟΥΡΓΙΩΝ ΣΤΟΝ ΚΩΔΙΚΑ:
+   - tick collection (max 200000)
+   - scrape TradingView iframe for live price
+   - build candles per TF from tick history
+   - detect Order Blocks (OB), FVG (3-candle imbalance), fractals & pattern similarity
+   - per TF table: each δείκτης αποφασίζει ξεχωριστά + τελική απόφαση + entry/sl/tp + profit estimate
+   ============================================================ */
+
+const TF_MAP = {M1:60,M3:180,M5:300,M15:900,M30:1800,M45:2700,H1:3600}; // seconds
+const TF_LIST = ['M1','M3','M5','M15','M30','M45','H1'];
+const MAX_TICKS = 200000;
+window._priceHistory = []; // {price, time}
+window._totalTicksEver = 0;
+window._lastKnownPrice = null;
+const LOT = 0.1; // default for profit estimation
+const PIP_VALUE_PER_PIP = LOT * 100; // $ per pip for XAU (approx used previously)
+
+/* -------------------------
+   Utilities
+   ------------------------- */
+function debounce(fn,ms=200){let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
+function now(){return Date.now();}
+
+/* -------------------------
+   Tick persistence
+   ------------------------- */
+function saveHistoryToStorage(){
+  try{
+    const keep = window._priceHistory.slice(-MAX_TICKS);
+    localStorage.setItem('xau_ticks', JSON.stringify(keep));
+    localStorage.setItem('xau_ticks_ts', String(Date.now()));
+    localStorage.setItem('xau_ticks_total', String(window._totalTicksEver));
+  }catch(e){console.warn('save err',e)}
+}
+function loadHistoryFromStorage(){
+  try{
+    const s = localStorage.getItem('xau_ticks');
+    if(!s) return;
+    const arr = JSON.parse(s);
+    if(Array.isArray(arr)) {
+      window._priceHistory = arr.slice(-MAX_TICKS);
+      window._totalTicksEver = parseInt(localStorage.getItem('xau_ticks_total')||String(window._priceHistory.length)) || window._priceHistory.length;
     }
-    setTimeout(pollTV, 3000);
+  }catch(e){console.warn('load err',e)}
+}
+loadHistoryFromStorage();
+updateTickCount();
 
-    // ---------- 2. Candle builder for each TF ----------
-    function buildCandles(tf) {
-      const ms = TIMEFRAMES[tf]*1000, arr = window._ticks;
-      if (!arr.length) return [];
-      const buckets = new Map();
-      for (let t of arr) {
-        const k = Math.floor(t.time / ms) * ms;
-        const b = buckets.get(k) || {open:t.price,close:t.price,low:t.price,high:t.price,vol:1,time:k};
-        b.close = t.price; b.vol++; if(t.price<b.low) b.low=t.price; if(t.price>b.high) b.high=t.price;
-        buckets.set(k, b);
-      }
-      return [...buckets.values()].sort((a,b)=>a.time-b.time);
-    }
-
-    // ---------- 3. SMC - Order Block finder -----------
-    function findOrderBlocks(candles) {
-      // Πολύ απλή: Bullish όταν αυτό το bearish candle ακολουθείται από συγκριτικό strong bullish move
-      // Bearish το ανάποδο
-      const obs = [];
-      for(let i=2;i<candles.length-2;i++) {
-        // Bullish OB: last bearish candle before a big bullish candle
-        if(candles[i].close < candles[i].open &&
-           candles[i+1].close > candles[i+1].open &&
-           candles[i+1].close > candles[i].open+((candles[i].open-candles[i].close)*1.5)) {
-          obs.push({type:'BULL OB', price:candles[i].low, idx:i});
+/* -------------------------
+   Price ingestion from TV widget
+   (attempt DOM scrape of iframe/span elements)
+   ------------------------- */
+window._tvReaderStarted = false;
+function startTVPriceReader(){
+  if(window._tvReaderStarted) return;
+  window._tvReaderStarted = true;
+  setInterval(()=>{
+    try{
+      const wrap = document.getElementById('tv-widget-wrap');
+      if(!wrap) return;
+      const all = wrap.querySelectorAll('span,div');
+      for(const el of all){
+        const txt = (el.textContent||'').trim().replace(/,/g,'');
+        if(!txt) continue;
+        const m = txt.match(/^\d{3,5}\.\d{1,2}$/);
+        if(m){
+          const v = parseFloat(txt);
+          if(v>1000 && v<20000){
+            window._lastKnownPrice = v;
+            recordPrice(v);
+            const priceEl = document.getElementById('live-price');
+            if(priceEl) priceEl.textContent = v.toFixed(2);
+            return;
+          }
         }
-        // Bearish OB: last bullish candle before a big bearish move
-        if(candles[i].close > candles[i].open &&
-           candles[i+1].close < candles[i+1].open &&
-           candles[i+1].close < candles[i].open-((candles[i].close-candles[i].open)*1.5)) {
-          obs.push({type:'BEAR OB', price:candles[i].high, idx:i});
+      }
+      // fallback: search any number in widget container
+      const wtxt = wrap.textContent || '';
+      const mm = wtxt.match(/([\d,]{4,}\.\d{1,2})/);
+      if(mm){
+        const v = parseFloat(mm[1].replace(/,/g,''));
+        if(v>1000 && v<20000){
+          window._lastKnownPrice = v;
+          recordPrice(v);
+          const priceEl = document.getElementById('live-price');
+          if(priceEl) priceEl.textContent = v.toFixed(2);
+          return;
         }
       }
-      return obs.slice(-2); // Μεχρι 2 ανά TF
+    }catch(e){}
+  }, 1000);
+}
+setTimeout(startTVPriceReader, 2500);
+
+/* -------------------------
+   recordPrice: stores tick, trims array, triggers analysis
+   ------------------------- */
+function recordPrice(p){
+  if(!p || p<1000 || p>20000) return;
+  window._priceHistory.push({price:p, time:Date.now()});
+  window._totalTicksEver++;
+  if(window._priceHistory.length > MAX_TICKS) window._priceHistory.shift();
+  updateTickCount();
+  // Save periodically but non-blocking
+  if(window._totalTicksEver % 50 === 0){
+    if(window.requestIdleCallback) requestIdleCallback(saveHistoryToStorage,{timeout:1000});
+    else setTimeout(saveHistoryToStorage,120);
+  }
+}
+
+/* -------------------------
+   UI tick counter
+   ------------------------- */
+function updateTickCount(){
+  const el = document.getElementById('tick-count');
+  if(el) el.textContent = (window._priceHistory.length || 0).toLocaleString('el-GR');
+}
+
+/* -------------------------
+   Build candles from ticks efficiently (bucket by tf)
+   ------------------------- */
+function buildCandlesFromHistory(tf){
+  const history = window._priceHistory;
+  if(!history || history.length < 5) return null;
+  const tfMs = (TF_MAP[tf] || 300) * 1000;
+  const bucketMap = new Map();
+  for(let i=0;i<history.length;i++){
+    const t = history[i];
+    const key = Math.floor(t.time / tfMs) * tfMs;
+    const b = bucketMap.get(key);
+    if(!b) bucketMap.set(key, {open:t.price,high:t.price,low:t.price,close:t.price,volume:1,time:key});
+    else{
+      if(t.price > b.high) b.high = t.price;
+      if(t.price < b.low) b.low = t.price;
+      b.close = t.price;
+      b.volume++;
     }
+  }
+  const candles = Array.from(bucketMap.values()).sort((a,b)=>a.time-b.time);
+  return candles.length >= 3 ? candles : null;
+}
 
-    // ---------- 4. FVG - Fair Value Gap finder ----------
-    function findFVGs(candles) {
-      // FVG: gap between last 3 candles, bull if c3.low > c1.high, bear if c3.high < c1.low
-      const fvg = [];
-      for(let i=2;i<candles.length;i++) {
-        const c1=candles[i-2], c2=candles[i-1], c3=candles[i];
-        if (c3.low > c1.high)   fvg.push({type:'BULL FVG', price:c1.high, idx:i});
-        if (c3.high < c1.low)   fvg.push({type:'BEAR FVG', price:c1.low,  idx:i});
-      }
-      return fvg.slice(-2);
+/* -------------------------
+   Indicators: Order Blocks (simple heuristic), FVG, Fractals, Pattern similarity
+   Each returns independent suggestion {decision: 'BUY'|'SELL'|'NEUT', entry, sl, tp, note, strength}
+   ------------------------- */
+
+/* 1) Williams Fractals (5-bar) */
+function calcWilliamsFractalsFromCandles(candles){
+  const highs = candles.map(c=>c.high), lows = candles.map(c=>c.low);
+  const n = highs.length;
+  if(n<5) return {up:[],down:[]};
+  const up=[], down=[];
+  for(let i=2;i<n-2;i++){
+    if(highs[i]>highs[i-1] && highs[i]>highs[i-2] && highs[i]>highs[i+1] && highs[i]>highs[i+2]) up.push({idx:i,price:highs[i]});
+    if(lows[i]<lows[i-1] && lows[i]<lows[i-2] && lows[i]<lows[i+1] && lows[i]<lows[i+2]) down.push({idx:i,price:lows[i]});
+  }
+  return {up,down};
+}
+
+/* 2) Fair Value Gap (3-candle imbalance) detection */
+function detectFVG(candles){
+  // Look at trailing sequences of 3 candles; if c3.low > c1.high => bullish FVG
+  const res = [];
+  for(let i=0;i<candles.length-2;i++){
+    const c1 = candles[i], c2 = candles[i+1], c3 = candles[i+2];
+    if(c3.low > c1.high){
+      res.push({type:'BULL',start:c1.high,end:c3.low,idx:i+2});
+    } else if(c3.high < c1.low){
+      res.push({type:'BEAR',start:c3.high,end:c1.low,idx:i+2});
     }
+  }
+  return res; // array of FVG zones (most recent last)
+}
 
-    // ---------- 5. Βρες σημαντικά fractal swings (5-bar) ----------
-    function findFractals(candles) {
-      const hi =[], lo=[];
-      for(let i=2;i<candles.length-2;i++) {
-        if(  candles[i].high > candles[i-2].high && candles[i].high > candles[i-1].high
-          && candles[i].high > candles[i+1].high && candles[i].high > candles[i+2].high)
-          hi.push({idx:i, price:candles[i].high});
-        if(  candles[i].low  < candles[i-2].low  && candles[i].low  < candles[i-1].low
-          && candles[i].low  < candles[i+1].low  && candles[i].low  < candles[i+2].low)
-          lo.push({idx:i, price:candles[i].low});
-      }
-      return {hi,lo};
+/* 3) Order Block (simple SMC heuristic)
+   - Bullish OB: last bearish candle before a strong bullish move (e.g., next candle close > previous high by threshold)
+   - Bearish OB opposite
+   Returns zones [{type, high, low, idx}] most recent first
+*/
+function detectOrderBlocks(candles){
+  const ob = [];
+  const n = candles.length;
+  if(n < 6) return ob;
+  // detect strong moves by comparing next 1-3 candle momentum
+  for(let i=1;i<n-3;i++){
+    const prev = candles[i-1], cur = candles[i];
+    // bullish OB candidate: cur is bearish (close < open) and following move shows strong bullish momentum
+    const forward = candles.slice(i+1, Math.min(n, i+4));
+    const forwardMaxClose = Math.max(...forward.map(c=>c.close));
+    const move = forwardMaxClose - cur.close;
+    const rel = move / Math.max(0.0001, Math.abs(cur.close)) * 100;
+    if(cur.close < cur.open && rel > 0.25){ // threshold (0.25% move) heuristic
+      ob.push({type:'BULL',high:cur.high,low:cur.low,idx:i,quality:rel});
     }
-
-    // ---------- 6. Fractal Pattern Similarity Forecast ----------
-    function fractalSimilarityForecast(closes) {
-      if (closes.length < 25) return {dir:'WAIT', target:null, conf:0};
-      // last 10 as pattern, scan whole history for most similar, what happened after
-      const pattern = closes.slice(-10);
-      let bestScore=99, bestIdx=null, afterMove=0;
-      for(let i=0;i<closes.length-20;i++){
-        const window = closes.slice(i,i+10);
-        let score = 0, dsum = 0;
-        for(let j=1;j<10;j++) dsum += Math.abs(window[j]-window[j-1]-(pattern[j]-pattern[j-1]));
-        score = dsum/10;
-        if(score < bestScore) { bestScore=score; bestIdx=i; }
-      }
-      if(bestIdx!==null && closes[bestIdx+15]) {
-        afterMove = closes[bestIdx+15]-closes[bestIdx+9];
-      }
-      return {
-        dir: afterMove>0 ? 'BUY' : afterMove<0 ? 'SELL' : 'WAIT',
-        target: afterMove ? closes[closes.length-1] + afterMove : null,
-        conf:Math.max(0,90-bestScore*40)
-      }
+    // bearish OB candidate
+    const forwardMinClose = Math.min(...forward.map(c=>c.close));
+    const moveDown = cur.close - forwardMinClose;
+    const relDown = moveDown / Math.max(0.0001, Math.abs(cur.close)) * 100;
+    if(cur.close > cur.open && relDown > 0.25){
+      ob.push({type:'BEAR',high:cur.high,low:cur.low,idx:i,quality:relDown});
     }
+  }
+  return ob;
+}
 
-    // ---------- 7. Entry logic per indicator (strict, όχι συνδυασμός score) ----------
-    function evaluateEntry(obs, fvgs, fractal, lastPrice) {
-      // -- Κάθε δείκτης πρέπει να πληρεί τα δικά του σκληρά κριτήρια --
-      let obDir = "WAIT", obAt = 0;
-      if(obs.some(o=>o.type==='BULL OB' && lastPrice>=o.price)) obDir="BUY", obAt=obs.find(o=>o.type==='BULL OB').price;
-      if(obs.some(o=>o.type==='BEAR OB' && lastPrice<=o.price)) obDir="SELL", obAt=obs.find(o=>o.type==='BEAR OB').price;
-
-      let fvgDir = "WAIT", fvgAt=0;
-      if(fvgs.some(f=>f.type==='BULL FVG' && lastPrice>=f.price)) fvgDir="BUY", fvgAt=fvgs.find(f=>f.type==='BULL FVG').price;
-      if(fvgs.some(f=>f.type==='BEAR FVG' && lastPrice<=f.price)) fvgDir="SELL", fvgAt=fvgs.find(f=>f.type==='BEAR FVG').price;
-
-      // Pattern forecast
-      let fracDir = fractal.dir, fracTgt = fractal.target, fracConf=fractal.conf;
-
-      // --- Για να έχουμε entry: και οι 3 δείκτες (OB, FVG, fractal) πρέπει να συμφωνούν ---
-      if(obDir==="BUY" && fvgDir==="BUY" && fracDir==="BUY") return {entry:"BUY", entryPoint:lastPrice, stop:obAt||fvgAt, target:fracTgt, conf:fracConf};
-      if(obDir==="SELL" && fvgDir==="SELL" && fracDir==="SELL") return {entry:"SELL", entryPoint:lastPrice, stop:obAt||fvgAt, target:fracTgt, conf:fracConf};
-      return {entry:"WAIT", entryPoint:"—", stop:"—", target:"—", conf:0};
+/* 4) Pattern repetition / similarity (normalized RMS over % moves)
+   - Compare the last lookback closes to historical windows and return similarity %
+   - Returns {similarity, predictedMovePct, predictedDir, confidence}
+*/
+function findPatternRepetition(closes, lookback=10, searchLen=200){
+  if(!closes || closes.length < lookback + 10) return null;
+  const recent = closes.slice(-lookback);
+  const recentNorm = [];
+  for(let i=1;i<recent.length;i++) recentNorm.push((recent[i]-recent[i-1])/recent[i-1]*100);
+  const maxHist = Math.min(500, closes.length - lookback - 8);
+  const start = closes.length - lookback - maxHist;
+  let bestScore = Infinity, bestMove = 0, top3=[];
+  for(let s=start; s<closes.length - lookback - 8; s++){
+    const win = closes.slice(s, s+lookback);
+    const winNorm = [];
+    for(let i=1;i<win.length;i++) winNorm.push((win[i]-win[i-1])/win[i-1]*100);
+    if(winNorm.length !== recentNorm.length) continue;
+    // normalize both series by their std
+    const meanR = recentNorm.reduce((a,b)=>a+b,0)/recentNorm.length;
+    const stdR = Math.sqrt(recentNorm.reduce((a,b)=>a+(b-meanR)**2,0)/recentNorm.length)||0.0001;
+    const meanW = winNorm.reduce((a,b)=>a+b,0)/winNorm.length;
+    const stdW = Math.sqrt(winNorm.reduce((a,b)=>a+(b-meanW)**2,0)/winNorm.length)||0.0001;
+    let diff = 0;
+    for(let i=0;i<recentNorm.length;i++){
+      const rn = (recentNorm[i]-meanR)/stdR;
+      const wn = (winNorm[i]-meanW)/stdW;
+      diff += (rn-wn)**2;
     }
-
-    // ---------- 8. Κύρια μηχανή/πίνακας ανά TF ----------
-    function runSMCEngine() {
-      const tfs = Object.keys(TIMEFRAMES);
-      let html = '';
-      for(let tf of tfs) {
-        const candles = buildCandles(tf);
-        if (candles.length < 25) {
-          html += `<div><span class="timeframe-label">${tf}</span> : Συλλογή δεδο��ένων (${candles.length} candles)...</div>`;
-          continue;
-        }
-        // SMC blocks, FVGs, fractal forecast
-        const ob   = findOrderBlocks(candles);
-        const fvg  = findFVGs(candles);
-        const frac = findFractals(candles);
-        const closes = candles.map(c=>c.close);
-        const fractalSim = fractalSimilarityForecast(closes);
-
-        // Entry eval (strict agreement)
-        const res = evaluateEntry(ob, fvg, fractalSim, closes[closes.length-1]);
-
-        html += `<table class="engine-table">
-        <tr><th colspan=6 style="text-align:left;font-size:14px;">${tf} timeframe</th></tr>
-        <tr>
-        <th>Last price</th>
-        <th>Order Block</th>
-        <th>FVG</th>
-        <th>Fractal Sim.</th>
-        <th>ENTRY DECISION</th>
-        <th>SL/TP</th>
-        </tr>
-        <tr>
-        <td>${closes[closes.length-1].toFixed(2)}</td>
-        <td>${ob.map(o=>o.type+': '+o.price.toFixed(2)).join('<br>')||'—'}</td>
-        <td>${fvg.map(f=>f.type+': '+f.price.toFixed(2)).join('<br>')||'—'}</td>
-        <td>${fractalSim.dir} → ${fractalSim.target?fractalSim.target.toFixed(2):'—'}<br>Conf:${fractalSim.conf}%</td>
-        <td class="${res.entry==='BUY'?'buy':res.entry==='SELL'?'sell':'wait'}">${res.entry}</td>
-        <td>
-          SL:${res.stop!=="—"?(res.entry==='BUY'?('<span style=color:#ff4060;>'+(res.entryPoint-res.stop).toFixed(2)+'</span>'):(res.entry==='SELL'?('<span style=color:#ff4060;>'+(res.stop-res.entryPoint).toFixed(2)+'</span>'):''):'—'}<br>
-          TP:${res.target&&res.target!=="—"?('<span style=color:#00e5a0;>'+res.target.toFixed(2)+'</span>'):'—'}
-        </td>
-        </tr></table>`;
-      }
-      document.getElementById('smc-tables').innerHTML = html;
+    const score = Math.sqrt(diff/recentNorm.length);
+    // what happened after the window?
+    const future = closes.slice(s+lookback, s+lookback+8);
+    const move = (future[future.length-1] - future[0]) / future[0] * 100;
+    if(score < bestScore){
+      bestScore = score;
+      bestMove = move;
     }
-  </script>
+    top3.push({score,move});
+    top3.sort((a,b)=>a.score-b.score);
+    if(top3.length>3) top3.pop();
+  }
+  if(bestScore === Infinity) return null;
+  const similarity = Math.max(0, Math.min(100, Math.round(100 - bestScore * 50))); // heuristic scaling
+  const avgMove = top3.reduce((a,b)=>a+b.move,0)/Math.max(1,top3.length);
+  const dir = avgMove > 0 ? 'UP' : 'DOWN';
+  const confidence = similarity > 75 && Math.abs(avgMove) > 0.2 ? 'HIGH' : similarity > 55 ? 'MEDIUM' : 'LOW';
+  return {similarity, predictedMovePct:avgMove, predictedDir:dir, confidence, top:top3.length};
+}
+
+/* -------------------------
+   Per-indicator decision functions
+   Each returns {decision, entry, sl, tp, note, strength}
+   ------------------------- */
+
+/* UTIL: estimate ATR from candles (simple) */
+function calcATRFromCandles(candles, period=14){
+  if(!candles || candles.length < period+1) return 1;
+  const n = candles.length;
+  let trSum = 0;
+  for(let i=n-period;i<n;i++){
+    const cur = candles[i], prev = candles[i-1];
+    const tr = Math.max(cur.high-cur.low, Math.abs(cur.high-prev.close), Math.abs(cur.low-prev.close));
+    trSum += tr;
+  }
+  return trSum/period;
+}
+
+/* DECISION: Order Blocks (OB)
+   Strategy:
+     - If there's a recent OB of type BULL and price is retesting its zone (price near low..high), suggest BUY entry at zone low + small buffer,
+       SL below OB low by ATR*0.6, TP = entry + ATR*RR (RR default 2).
+*/
+function decideOB(candles, obZones){
+  if(!obZones || obZones.length===0) return {decision:'NEUT',note:'No OB'};
+  const last = obZones[obZones.length-1]; // most recent
+  const price = window._lastKnownPrice || (candles[candles.length-1] && candles[candles.length-1].close);
+  if(!price) return {decision:'NEUT',note:'No price'};
+  const atr = calcATRFromCandles(candles,14);
+  // If bullish OB: expect price to retest zone (low..high) from above or approach
+  if(last.type==='BULL'){
+    // If price is above OB and has pulled back to near OB.high..OB.low (retest zone), propose entry
+    const zoneHigh = last.high, zoneLow = last.low;
+    const closeToZone = price <= zoneHigh + atr*0.5 && price >= zoneLow - atr*0.5;
+    if(closeToZone){
+      const entry = Math.min(price, zoneHigh); // conservative entry near zone high
+      const sl = zoneLow - atr*0.6;
+      const tp = entry + atr*2.0; // RR ~2
+      return {decision:'BUY',entry,sl,tp,note:`OB bullish retest (quality ${last.quality.toFixed(2)}%)`,strength:last.quality};
+    } else {
+      return {decision:'NEUT',note:'OB bullish but no retest'};
+    }
+  } else {
+    const zoneHigh = last.high, zoneLow = last.low;
+    const closeToZone = price >= zoneLow - atr*0.5 && price <= zoneHigh + atr*0.5;
+    if(closeToZone){
+      const entry = Math.max(price, zoneLow);
+      const sl = zoneHigh + atr*0.6;
+      const tp = entry - atr*2.0;
+      return {decision:'SELL',entry,sl,tp,note:`OB bearish retest (quality ${last.quality.toFixed(2)}%)`,strength:last.quality};
+    } else {
+      return {decision:'NEUT',note:'OB bearish but no retest'};
+    }
+  }
+}
+
+/* DECISION: FVG
+   - If the most recent FVG is unfilled and near current price, use it as entry zone.
+*/
+function decideFVG(candles, fvgList){
+  if(!fvgList || fvgList.length===0) return {decision:'NEUT',note:'No FVG'};
+  const last = fvgList[fvgList.length-1];
+  const price = window._lastKnownPrice;
+  if(!price) return {decision:'NEUT',note:'No price'};
+  const atr = calcATRFromCandles(candles,14);
+  const dist = last.type==='BULL' ? Math.abs(price - last.end) : Math.abs(price - last.end);
+  if(dist <= atr * 2.0){
+    if(last.type==='BULL'){
+      const entry = last.end + 0.0;
+      const sl = last.start - atr*0.6;
+      const tp = entry + atr*2.0;
+      return {decision:'BUY',entry,sl,tp,note:`FVG bullish near price`,strength: Math.min(100, Math.round((atr/(Math.abs(last.end-last.start)+0.0001))*100))};
+    } else {
+      const entry = last.end - 0.0;
+      const sl = last.start + atr*0.6;
+      const tp = entry - atr*2.0;
+      return {decision:'SELL',entry,sl,tp,note:`FVG bearish near price`,strength: Math.min(100, Math.round((atr/(Math.abs(last.end-last.start)+0.0001))*100))};
+    }
+  } else {
+    return {decision:'NEUT',note:'FVG exists but not near price'};
+  }
+}
+
+/* DECISION: Fractal similarity
+   - If similarity high (>60) and predicted direction matches fractal structure, return entry at current price with SL=atr*1.2, TP=predictedMovePct*price (approx)
+*/
+function decideFractalSimilarity(candles){
+  if(!candles || candles.length<20) return {decision:'NEUT',note:'Insufficient candles'};
+  const closes = candles.map(c=>c.close);
+  const pat = findPatternRepetition(closes, 10, 300);
+  if(!pat) return {decision:'NEUT',note:'No matching patterns'};
+  const price = window._lastKnownPrice || closes[closes.length-1];
+  const atr = calcATRFromCandles(candles,14);
+  const sim = pat.similarity;
+  if(sim >= 60 && Math.abs(pat.predictedMovePct) > 0.2){
+    const dir = pat.predictedMovePct > 0 ? 'BUY' : 'SELL';
+    const entry = price;
+    const sl = dir==='BUY' ? entry - atr*1.2 : entry + atr*1.2;
+    const tp = dir==='BUY' ? entry + Math.abs(entry*(pat.predictedMovePct/100)) : entry - Math.abs(entry*(pat.predictedMovePct/100));
+    return {decision: dir, entry, sl, tp, note:`Similarity ${sim}% predicted ${pat.predictedMovePct.toFixed(2)}%`, strength: sim, confidence: pat.confidence};
+  }
+  return {decision:'NEUT',note:`Low similarity (${pat.similarity}%)`};
+}
+
+/* -------------------------
+   Final decision combining rules
+   Rule (configurable / conservative):
+     - If OB suggests BUY/SELL AND (FVG agrees OR FractalSimilarity strong and same dir) => Final BUY/SELL (strong).
+     - Else if two indicators independently agree (e.g., FVG + Fractal both BUY) => BUY.
+     - Else WAIT.
+   ------------------------- */
+function combineDecisions(obDec, fvgDec, fracDec){
+  // Normalize decisions
+  const decisions = [obDec, fvgDec, fracDec];
+  const votes = {BUY:0, SELL:0, NEUT:0};
+  decisions.forEach(d=>{
+    const v = (d && d.decision) ? d.decision : 'NEUT';
+    votes[v] = (votes[v]||0) + 1;
+  });
+  // Strong rule: OB present and supports
+  if(obDec && obDec.decision==='BUY'){
+    if((fvgDec && fvgDec.decision==='BUY') || (fracDec && fracDec.decision==='BUY' && fracDec.strength>=60)){
+      return {final:'BUY',reason:'OB + (FVG or Fractal) confirm',entry:obDec.entry,sl:obDec.sl,tp:obDec.tp,strength:Math.max(obDec.strength || 0, fracDec.strength||0)};
+    }
+  }
+  if(obDec && obDec.decision==='SELL'){
+    if((fvgDec && fvgDec.decision==='SELL') || (fracDec && fracDec.decision==='SELL' && fracDec.strength>=60)){
+      return {final:'SELL',reason:'OB + (FVG or Fractal) confirm',entry:obDec.entry,sl:obDec.sl,tp:obDec.tp,strength:Math.max(obDec.strength || 0, fracDec.strength||0)};
+    }
+  }
+  // Two independent indicators agree
+  const buyCount = (obDec.decision==='BUY') + (fvgDec.decision==='BUY') + (fracDec.decision==='BUY');
+  const sellCount = (obDec.decision==='SELL') + (fvgDec.decision==='SELL') + (fracDec.decision==='SELL');
+  if(buyCount >= 2){
+    const pref = obDec.decision==='BUY' ? obDec : fvgDec.decision==='BUY' ? fvgDec : fracDec;
+    return {final:'BUY',reason:'Multiple indicators BUY',entry:pref.entry,sl:pref.sl,tp:pref.tp,strength:Math.max(obDec.strength||0,fvgDec.strength||0,fracDec.strength||0)};
+  }
+  if(sellCount >=2){
+    const pref = obDec.decision==='SELL' ? obDec : fvgDec.decision==='SELL' ? fvgDec : fracDec;
+    return {final:'SELL',reason:'Multiple indicators SELL',entry:pref.entry,sl:pref.sl,tp:pref.tp,strength:Math.max(obDec.strength||0,fvgDec.strength||0,fracDec.strength||0)};
+  }
+  return {final:'WAIT',reason:'No conclusive combo',entry:null,sl:null,tp:null,strength:0};
+}
+
+/* -------------------------
+   Profit estimation helper
+   ------------------------- */
+function estimateProfit(entry, tp, direction){
+  if(!entry || !tp) return 0;
+  const pips = Math.abs(tp - entry); // in $ units for XAU, treat 1 = 1 pip
+  const profit = pips * PIP_VALUE_PER_PIP;
+  return profit;
+}
+
+/* -------------------------
+   Main analysis: runs per timeframe and renders table
+   ------------------------- */
+const resultsDiv = document.getElementById('results');
+const tfButtonsDiv = document.getElementById('tf-buttons');
+
+// Create TF buttons and result panels
+TF_LIST.forEach((tf, idx)=>{
+  const btn = document.createElement('button');
+  btn.className = 'tf-btn' + (tf==='M5' ? ' active' : '');
+  btn.textContent = tf;
+  btn.onclick = ()=>{
+    document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderResults(); // immediate render
+  };
+  tfButtonsDiv.appendChild(btn);
+});
+
+function renderResults(){
+  resultsDiv.innerHTML = '';
+  TF_LIST.forEach(tf=>{
+    const panel = document.createElement('div');
+    panel.className = 'panel';
+    panel.style.minHeight = '120px';
+    panel.id = `panel-${tf}`;
+    panel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-weight:700">${tf}</div>
+      <div class="small">Candles from ticks: <span id="c-${tf}">—</span></div>
+    </div>
+    <table class="table" id="table-${tf}">
+      <thead><tr><th>Indicator</th><th>Decision</th><th>Entry</th><th>SL</th><th>TP</th><th>Note / Strength</th></tr></thead>
+      <tbody><tr><td colspan="6" class="small">Analyzing...</td></tr></tbody>
+    </table>
+    <div id="final-${tf}" style="margin-top:8px"></div>`;
+    resultsDiv.appendChild(panel);
+  });
+}
+renderResults();
+
+/* Analyze a single timeframe and update its table */
+async function analyzeTF(tf){
+  const table = document.getElementById(`table-${tf}`);
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '<tr><td colspan="6" class="small">Computing...</td></tr>';
+  // Build candles
+  let candles = buildCandlesFromHistory(tf);
+  if(!candles || candles.length < 8){
+    tbody.innerHTML = `<tr><td colspan="6" class="small">Insufficient candles for ${tf} — waiting for ticks (${candles?candles.length:0})</td></tr>`;
+    document.getElementById(`c-${tf}`).textContent = candles ? candles.length : 0;
+    return;
+  }
+  // cap size to reduce calc cost
+  if(candles.length > 1000) candles = candles.slice(-1000);
+  document.getElementById(`c-${tf}`).textContent = candles.length;
+
+  // Detect building blocks
+  const fvgList = detectFVG(candles);
+  const obList = detectOrderBlocks(candles);
+  const fractals = calcWilliamsFractalsFromCandles(candles);
+  const fractalDecision = decideFractalSimilarity(candles);
+  const obDecision = decideOB(candles, obList);
+  const fvgDecision = decideFVG(candles, fvgList);
+
+  const final = combineDecisions(obDecision, fvgDecision, fractalDecision);
+
+  // Build rows per indicator
+  const rows = [];
+  rows.push(renderRow('Order Blocks', obDecision));
+  rows.push(renderRow('FVG (Fair Value Gap)', fvgDecision));
+  rows.push(renderRow('Fractal Pattern Similarity', fractalDecision));
+  // Final decision row
+  const finalDiv = document.getElementById(`final-${tf}`);
+  const profitEst = final.entry && final.tp ? estimateProfit(final.entry, final.tp, final.final) : 0;
+  const finalHtml = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+    <div>
+      <span style="font-weight:800">Final:</span>
+      <span class="badge ${final.final==='BUY'?'buy':final.final==='SELL'?'sell':'wait'}">${final.final}</span>
+      <span class="small" style="margin-left:8px">${final.reason}</span>
+    </div>
+    <div style="text-align:right">
+      <div class="small">Entry: ${final.entry?final.entry.toFixed(2):'—'}</div>
+      <div class="small">SL: ${final.sl?final.sl.toFixed(2):'—'}</div>
+      <div class="small">TP: ${final.tp?final.tp.toFixed(2):'—'}</div>
+      <div class="small">Est Profit (0.1 lot): <span style="font-weight:700;color:var(--gold)">${profitEst?('$'+profitEst.toFixed(1)):'—'}</span></div>
+    </div>
+  </div>`;
+  finalDiv.innerHTML = finalHtml;
+
+  // Fill tbody
+  tbody.innerHTML = rows.join('');
+}
+
+function renderRow(name, dec){
+  if(!dec) dec = {decision:'NEUT',entry:null,sl:null,tp:null,note:'—'};
+  const decBadge = dec.decision === 'BUY' ? `<span class="badge buy">BUY</span>` :
+                   dec.decision === 'SELL' ? `<span class="badge sell">SELL</span>` :
+                   `<span class="badge wait">WAIT</span>`;
+  const entry = dec.entry ? dec.entry.toFixed(2) : '—';
+  const sl = dec.sl ? dec.sl.toFixed(2) : '—';
+  const tp = dec.tp ? dec.tp.toFixed(2) : '—';
+  const note = dec.note ? `${dec.note} ${dec.strength?('· '+(dec.strength||'')+''):''}` : '—';
+  return `<tr>
+    <td style="width:24%">${name}</td>
+    <td style="width:12%">${decBadge}</td>
+    <td style="width:14%">${entry}</td>
+    <td style="width:14%">${sl}</td>
+    <td style="width:14%">${tp}</td>
+    <td style="width:22%">${note}</td>
+  </tr>`;
+}
+
+/* -------------------------
+   Periodic analysis scheduler
+   - We analyze frequently but avoid heavy loops: stagger TFs
+   ------------------------- */
+let _anIdx = 0;
+async function scheduledAnalysis(){
+  if(window._priceHistory.length < 10) {
+    // nothing yet
+    TF_LIST.forEach(tf=>{
+      const table = document.getElementById(`table-${tf}`);
+      if(table) table.querySelector('tbody').innerHTML = `<tr><td colspan="6" class="small">Waiting for ticks to gather...</td></tr>`;
+    });
+    return;
+  }
+  // analyze one or two TFs each cycle to spread CPU
+  const toAnalyze = [];
+  toAnalyze.push(TF_LIST[_anIdx % TF_LIST.length]);
+  // also analyze M5 every cycle as priority
+  if(!_anIdx || TF_LIST[_anIdx % TF_LIST.length] !== 'M5') toAnalyze.push('M5');
+  _anIdx++;
+  for(const tf of toAnalyze){
+    await analyzeTF(tf);
+    await new Promise(r=>setTimeout(r, 120)); // small yield
+  }
+}
+setInterval(scheduledAnalysis, 3000);
+setTimeout(scheduledAnalysis, 1500);
+
+/* -------------------------
+   Save ticks on unload
+   ------------------------- */
+window.addEventListener('beforeunload', saveHistoryToStorage);
+window.addEventListener('pagehide', saveHistoryToStorage);
+
+/* -------------------------
+   Quick demo helper:
+   - If TradingView did not provide price after some seconds, show manual input
+   ------------------------- */
+function showManualPriceInput(){
+  if(document.getElementById('manual-price-wrap')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'manual-price-wrap';
+  wrap.className = 'panel';
+  wrap.style.marginTop = '12px';
+  wrap.innerHTML = `<div style="display:flex;gap:8px;align-items:center">
+    <div style="font-family:Share Tech Mono,monospace;color:var(--muted)">No live price from TV — set manual price:</div>
+    <input id="manual-price-input" type="number" placeholder="3172.50" style="padding:6px;border-radius:6px;background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--gold)">
+    <button onclick="setManualPrice()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--gold);background:rgba(245,200,66,0.12);color:var(--gold)">SET</button>
+    </div>`;
+  document.querySelector('.container').prepend(wrap);
+}
+function setManualPrice(){
+  const v = parseFloat(document.getElementById('manual-price-input').value);
+  if(v && v>1000 && v<20000){
+    window._lastKnownPrice = v;
+    recordPrice(v);
+    document.getElementById('live-price').textContent = v.toFixed(2);
+    saveHistoryToStorage();
+    scheduledAnalysis();
+  } else alert('Invalid price');
+}
+
+/* -------------------------
+   Start: if no TV price for X seconds, show manual input
+   ------------------------- */
+setTimeout(()=>{
+  if(!window._lastKnownPrice) showManualPriceInput();
+}, 6000);
+
+</script>
 </body>
 </html>
