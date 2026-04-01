@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<title>XAUUSD SMC STRICT - ORIGINAL METHOD</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg: #050709; --surface: #090d12; --panel: #0b1018; --border: #1c2a3a;
+        --gold: #f5c842; --green: #00e5a0; --red: #ff4060; --text: #c8d8e8; --muted: #5a7090;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; padding: 20px; }
+
+    /* ΤΟ WIDGET ΣΟΥ - ΠΡΕΠΕΙ ΝΑ ΕΙΝΑΙ ΟΡΑΤΟ ΓΙΑ ΝΑ ΓΙΝΕΤΑΙ ΤΟ SCRAPE */
+    #widget-target {
+        width: 100%; height: 80px; margin-bottom: 20px; border: 1px solid var(--border); overflow: hidden;
+    }
+
+    .info-header { display: flex; gap: 30px; background: var(--surface); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px; }
+    .live-val { font-family: 'Orbitron'; font-size: 24px; color: var(--gold); }
+    .label { font-size: 10px; color: var(--muted); display: block; text-transform: uppercase; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; border-top: 4px solid var(--border); }
+    .tf-title { font-family: 'Orbitron'; color: var(--gold); margin-bottom: 15px; font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+
+    .metric-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 13px; }
+    
+    .decision-box { margin-top: 20px; padding: 15px; border-radius: 8px; text-align: center; font-family: 'Orbitron'; border: 2px solid var(--border); }
+    .BUY { border-color: var(--green); color: var(--green); background: rgba(0,229,160,0.05); }
+    .SELL { border-color: var(--red); color: var(--red); background: rgba(255,64,96,0.05); }
+    .WAIT { color: var(--muted); border-style: dashed; }
+</style>
+</head>
+<body>
+
+<div id="widget-target">
+    <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+        { "symbol": "FX_IDC:XAUUSD", "width": "100%", "colorTheme": "dark", "isTransparent": true, "locale": "en" }
+        </script>
+    </div>
+</div>
+
+<div class="info-header">
+    <div><span class="label">LIVE XAUUSD</span><div id="price-display" class="live-val">WAITING...</div></div>
+    <div><span class="label">TICK MEMORY</span><div id="tick-count" class="live-val" style="color:var(--text)">0</div></div>
+</div>
+
+<div class="grid" id="dashboard"></div>
+
+<script>
+let tickHistory = [];
+const MAX_TICKS = 200000;
+const TFs = ['M1', 'M5', 'M15', 'M30', 'H1'];
+const TF_SEC = { M1: 60, M5: 300, M15: 900, M30: 1800, H1: 3600 };
+
+// --- Ο ΤΡΟΠΟΣ ΣΟΥ: SCRAPING ΑΠΟ ΤΟ WIDGET ---
+function scrapePrice() {
+    // Στοχεύουμε όλα τα spans μέσα στο widget container
+    const spans = document.querySelectorAll('#widget-target span');
+    let currentPrice = null;
+
+    spans.forEach(s => {
+        const txt = s.innerText.replace(/,/g, '');
+        const num = parseFloat(txt);
+        // Έλεγχος αν είναι η τιμή του χρυσού
+        if (!isNaN(num) && num > 1000 && txt.includes('.')) {
+            currentPrice = num;
+        }
+    });
+
+    if (currentPrice) {
+        const now = Date.now();
+        // Καταγραφή μόνο πραγματικής αλλαγής (Real Tick)
+        if (tickHistory.length === 0 || tickHistory[tickHistory.length - 1].p !== currentPrice) {
+            tickHistory.push({ p: currentPrice, t: now });
+            if (tickHistory.length > MAX_TICKS) tickHistory.shift();
+
+            document.getElementById('price-display').innerText = currentPrice.toFixed(2);
+            document.getElementById('tick-count').innerText = tickHistory.length.toLocaleString();
+        }
+    }
+}
+
+// --- SMC LOGIC (Strict) ---
+function analyze(tf) {
+    const candles = buildCandles(tf);
+    if (candles.length < 10) return { decision: 'WAIT', note: 'Collecting...' };
+
+    const last = candles[candles.length - 1];
+    const prev = candles[candles.length - 2];
+    const p3 = candles[candles.length - 3];
+
+    // 1. Order Block
+    const obBull = candles.slice(-10, -2).find(c => c.close < c.open && candles[candles.length-2].close > c.high);
+    const obBear = candles.slice(-10, -2).find(c => c.close > c.open && candles[candles.length-2].close < c.low);
+
+    // 2. FVG (Imbalance)
+    const fvgBull = prev.low > p3.high;
+    const fvgBear = prev.high < p3.low;
+
+    // 3. Fractal Similarity
+    const fracBull = prev.low < p3.low && prev.low < last.low;
+    const fracBear = prev.high > p3.high && prev.high > last.high;
+
+    let decision = 'WAIT';
+    if (obBull && fvgBull && fracBull) decision = 'BUY';
+    if (obBear && fvgBear && fracBear) decision = 'SELL';
+
+    return {
+        decision,
+        ob: obBull || obBear ? 'DETECTED' : 'NONE',
+        fvg: fvgBull ? 'BULLISH' : (fvgBear ? 'BEARISH' : 'NONE'),
+        frac: fracBull ? 'BULLISH' : (fracBear ? 'BEARISH' : 'NEUTRAL')
+    };
+}
+
+function buildCandles(tf) {
+    const ms = TF_SEC[tf] * 1000;
+    const res = [];
+    if (tickHistory.length === 0) return [];
+    let cur = null;
+    tickHistory.forEach(t => {
+        const b = Math.floor(t.t / ms) * ms;
+        if (!cur || cur.time !== b) {
+            if (cur) res.push(cur);
+            cur = { time: b, open: t.p, high: t.p, low: t.p, close: t.p };
+        } else {
+            cur.high = Math.max(cur.high, t.p);
+            cur.low = Math.min(cur.low, t.p);
+            cur.close = t.p;
+        }
+    });
+    return res;
+}
+
+function updateUI() {
+    const dash = document.getElementById('dashboard');
+    let html = '';
+    TFs.forEach(tf => {
+        const data = analyze(tf);
+        html += `
+            <div class="card">
+                <div class="tf-title">${tf} FRAME</div>
+                <div class="metric-row"><span>Order Block</span><b>${data.ob}</b></div>
+                <div class="metric-row"><span>FVG Imbalance</span><b>${data.fvg}</b></div>
+                <div class="metric-row"><span>Fractal Similarity</span><b>${data.frac}</b></div>
+                <div class="decision-box ${data.decision}">
+                    <div style="font-size: 22px; font-weight: 900;">${data.decision}</div>
+                </div>
+            </div>`;
+    });
+    dash.innerHTML = html;
+}
+
+// LOOP
+setInterval(scrapePrice, 1000);
+setInterval(updateUI, 2000);
+</script>
+</body>
+</html>
