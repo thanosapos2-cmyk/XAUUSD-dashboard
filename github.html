@@ -1,454 +1,657 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XAUUSD SMC + Fractal Engine</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #050709;
-            --surface: #090d12;
-            --panel: #0b1018;
-            --border: #1c2a3a;
-            --gold: #f5c842;
-            --green: #00e5a0;
-            --red: #ff4060;
-            --blue: #3de0ff;
-            --text: #c8d8e8;
-            --muted: #3d5068;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Rajdhani', sans-serif;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header { 
-            font-family: 'Orbitron', sans-serif;
-            font-size: 24px;
-            font-weight: 900;
-            color: var(--gold);
-            margin-bottom: 20px;
-            letter-spacing: 2px;
-        }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 20px; }
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px;
-            transition: all 0.3s;
-        }
-        .card:hover { border-color: var(--gold); }
-        .card-title { font-size: 12px; color: var(--muted); letter-spacing: 2px; margin-bottom: 10px; font-weight: 700; }
-        .card-value { font-size: 20px; font-weight: 900; font-family: 'Orbitron'; }
-        .bull { color: var(--green); }
-        .bear { color: var(--red); }
-        .wait { color: var(--blue); }
-        .table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
-        .table th, .table td { padding: 8px; text-align: left; border-bottom: 1px solid var(--border); }
-        .table th { color: var(--muted); font-weight: 700; }
-        .signal-box { 
-            background: rgba(245,200,66,0.08);
-            border: 1px solid rgba(245,200,66,0.3);
-            border-radius: 8px;
-            padding: 16px;
-            margin: 10px 0;
-        }
-        .ob-box { background: rgba(168,85,247,0.06); border-left: 4px solid var(--gold); }
-        .fvg-box { background: rgba(61,224,255,0.06); border-left: 4px solid var(--blue); }
-        .fractal-box { background: rgba(0,229,160,0.06); border-left: 4px solid var(--green); }
-        button {
-            background: rgba(245,200,66,0.15);
-            border: 1px solid var(--gold);
-            color: var(--gold);
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: 'Orbitron';
-            font-size: 10px;
-            letter-spacing: 1px;
-            transition: all 0.2s;
-        }
-        button:hover { background: var(--gold); color: #000; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAUUSD SMC · Order Blocks · FVG · Fractals</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050709;
+  --surface: #0b1018;
+  --gold: #f5c842;
+  --green: #00e5a0;
+  --red: #ff4060;
+  --text: #c8d8e8;
+  --muted: #3d5068;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+}
+header {
+  background: var(--surface);
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.logo { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 900; color: var(--gold); letter-spacing: 3px; }
+.price-display { font-size: 16px; color: var(--gold); font-weight: 700; }
+.tabs { display: flex; gap: 0; padding: 0 20px; background: var(--surface); border-bottom: 1px solid var(--muted); }
+.tab { padding: 10px 18px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; font-size: 11px; }
+.tab.active { border-bottom-color: var(--gold); color: var(--gold); }
+.panel { display: none; padding: 20px; }
+.panel.active { display: block; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--muted); border-radius: 6px; padding: 16px; }
+.card-title { font-family: 'Orbitron', sans-serif; font-size: 11px; color: var(--gold); letter-spacing: 2px; margin-bottom: 12px; }
+.row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.label { color: var(--muted); }
+.value { color: var(--gold); font-weight: 700; }
+.buy { color: var(--green); }
+.sell { color: var(--red); }
+.neutral { color: var(--gold); }
+.btn { padding: 8px 16px; background: rgba(245,200,66,0.15); border: 1px solid var(--gold); color: var(--gold); border-radius: 4px; cursor: pointer; font-size: 10px; font-family: 'Orbitron', sans-serif; letter-spacing: 1px; transition: all 0.2s; }
+.btn:hover { background: var(--gold); color: #000; }
+input[type="range"] { accent-color: var(--gold); cursor: pointer; }
+.tf-buttons { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.tf-btn { padding: 6px 12px; background: var(--surface); border: 1px solid var(--muted); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 9px; transition: all 0.2s; }
+.tf-btn.active { background: var(--gold); color: #000; border-color: var(--gold); }
+.score-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin: 6px 0; }
+.score-fill { height: 100%; background: var(--gold); transition: width 0.5s; }
+table { width: 100%; border-collapse: collapse; font-size: 10px; }
+th { background: rgba(245,200,66,0.1); padding: 8px; text-align: left; border: 1px solid var(--muted); color: var(--gold); }
+td { padding: 8px; border: 1px solid var(--muted); }
+tr:hover { background: rgba(245,200,66,0.03); }
+</style>
 </head>
 <body>
-<div class="container">
-    <div class="header">⚡ XAUUSD SMC + FRACTAL ENGINE</div>
 
-    <!-- Live Price from TradingView -->
-    <div class="card" style="background: rgba(245,200,66,0.1); border: 2px solid var(--gold);">
-        <div class="card-title">📡 LIVE PRICE (TradingView)</div>
-        <div class="card-value gold" id="live-price">Loading...</div>
-        <div style="font-size: 10px; color: var(--muted); margin-top: 8px;">
-            Ticks: <span id="tick-count">0</span> | Status: <span id="tv-status">Connecting...</span>
-        </div>
+<header>
+  <div class="logo">⚡ XAUUSD SMC</div>
+  <div class="price-display" id="live-price">$3,200.00</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab(this,'overview')">📊 Overview</div>
+  <div class="tab" onclick="switchTab(this,'analysis')">🔬 Analysis</div>
+  <div class="tab" onclick="switchTab(this,'signals')">⚡ Signals</div>
+  <div class="tab" onclick="switchTab(this,'journal')">📓 Journal</div>
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━ OVERVIEW ━━━━━━━━━━━━━━━━━━ -->
+<div id="panel-overview" class="panel active">
+  <h2 style="color: var(--gold); margin-bottom: 16px;">XAUUSD · REAL-TIME SMC ANALYSIS</h2>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">📊 Price Data</div>
+      <div class="row">
+        <span class="label">Live Price:</span>
+        <span class="value" id="ov-price">$3,200.00</span>
+      </div>
+      <div class="row">
+        <span class="label">Ticks Collected:</span>
+        <span class="value" id="ov-ticks">0</span>
+      </div>
+      <div class="row">
+        <span class="label">Candles (M5):</span>
+        <span class="value" id="ov-candles">0</span>
+      </div>
+      <div class="row">
+        <span class="label">Data Status:</span>
+        <span class="value" id="ov-status">⏳ Collecting...</span>
+      </div>
     </div>
 
-    <!-- TradingView Widget (hidden, for price scraping) -->
-    <div id="tv-widget" style="position: absolute; left: -9999px; width: 1px; height: 1px;">
-        <div class="tradingview-widget-container">
-            <div class="tradingview-widget-container__widget"></div>
-            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
-            {
-                "symbol": "OANDA:XAUUSD",
-                "width": "100%",
-                "colorTheme": "dark",
-                "isTransparent": true,
-                "locale": "en"
-            }
-            </script>
-        </div>
+    <div class="card">
+      <div class="card-title">🎯 Quick Summary</div>
+      <div class="row">
+        <span class="label">Recommended:</span>
+        <span id="ov-recommendation" class="neutral">—</span>
+      </div>
+      <div class="row">
+        <span class="label">Confidence:</span>
+        <span class="value" id="ov-confidence">—</span>
+      </div>
+      <div class="row">
+        <span class="label">Next Action:</span>
+        <span id="ov-action" class="neutral">Await Data</span>
+      </div>
+      <button class="btn" onclick="runFullAnalysis()" style="width: 100%; margin-top: 10px;">⚡ RUN ANALYSIS</button>
     </div>
+  </div>
+</div>
 
-    <!-- Timeframe Selector -->
-    <div style="margin-bottom: 20px;">
-        <button onclick="selectTF('M1')">M1</button>
-        <button onclick="selectTF('M5')">M5</button>
-        <button onclick="selectTF('M15')">M15</button>
-        <button onclick="selectTF('M30')">M30</button>
-        <button onclick="selectTF('H1')">H1</button>
-        <button onclick="runAnalysis()" style="margin-left: 20px; background: linear-gradient(135deg, var(--gold), #e8a020);">
-            🔄 ANALYZE
-        </button>
-    </div>
+<!-- ━━━━━━━━━━━━━━━━━━ ANALYSIS ━━━━━━━━━━━━━━━━━━ -->
+<div id="panel-analysis" class="panel">
+  <h2 style="color: var(--gold); margin-bottom: 16px;">SMC INDICATORS · ORDER BLOCKS · FVG · FRACTALS</h2>
 
-    <!-- Results Grid -->
-    <div class="grid" id="results-grid"></div>
+  <div class="tf-buttons" id="tf-selector"></div>
 
-    <!-- Detailed Analysis Panel -->
-    <div class="card" style="margin-top: 30px;">
-        <div class="header" style="margin: 0 0 20px 0; font-size: 16px;">📊 DETAILED ANALYSIS</div>
-        <div id="analysis-panel"></div>
-    </div>
+  <div id="analysis-content" style="margin-top: 16px;"></div>
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━ SIGNALS ━━━━━━━━━━━━━━━━━━ -->
+<div id="panel-signals" class="panel">
+  <h2 style="color: var(--gold); margin-bottom: 16px;">TRADING SIGNALS · ENTRY / SL / TP</h2>
+  <div id="signals-content" style="display: grid; gap: 16px;"></div>
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━ JOURNAL ━━━━━━━━━━━━━━━━━━ -->
+<div id="panel-journal" class="panel">
+  <h2 style="color: var(--gold); margin-bottom: 16px;">TRADE JOURNAL</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>TF</th>
+        <th>Signal</th>
+        <th>Entry</th>
+        <th>SL</th>
+        <th>TP</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="journal-body">
+      <tr><td colspan="7" style="text-align: center; color: var(--muted);">No signals yet</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- TV WIDGET (HIDDEN) -->
+<div id="tv-widget-wrap" style="display: none;">
+  <div class="tradingview-widget-container">
+    <div class="tradingview-widget-container__widget"></div>
+    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+    {
+      "symbol": "OANDA:XAUUSD",
+      "width": "100%",
+      "colorTheme": "dark",
+      "isTransparent": true,
+      "locale": "en"
+    }
+    </script>
+  </div>
 </div>
 
 <script>
-// ════════════════════════════════════════════════════════════════
-// CORE ENGINE: Price History + OHLCV Building
-// ════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════
+// CORE ENGINE
+// ═════════════════════════════════════════════════════════════
 
-window._priceHistory = [];
-window._activeTF = 'M5';
+const TF_MAP = {M1:60, M3:180, M5:300, M15:900, M30:1800, M45:2700, H1:3600};
+const TFs = ['M1','M5','M15','M30','H1'];
 const MAX_TICKS = 200000;
-const TF_SECONDS = { M1: 60, M3: 180, M5: 300, M15: 900, M30: 1800, H1: 3600 };
 
-// Price recording
+let state = {
+  priceHistory: [],
+  totalTicks: 0,
+  lastPrice: 3200,
+  indicators: {},
+  journal: JSON.parse(localStorage.getItem('journal')||'[]'),
+  activeTF: 'M5'
+};
+
+// ─────────────────────────────────────────────────────────────
+// 1. TRADINGVIEW PRICE SCRAPER
+// ─────────────────────────────────────────────────────────────
+function scrapeTVPrice() {
+  try {
+    const wrap = document.getElementById('tv-widget-wrap');
+    if (!wrap) return null;
+    
+    // Search through all spans in TV widget
+    const allElems = wrap.querySelectorAll('*');
+    for (let el of allElems) {
+      const text = el.textContent?.trim();
+      if (!text) continue;
+      
+      const priceMatch = text.match(/(\d{4,5})\.(\d{2})/);
+      if (priceMatch) {
+        const price = parseFloat(priceMatch[0]);
+        if (price > 2000 && price < 10000) return price;
+      }
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 2. TICK RECORDING & CANDLE BUILDING
+// ─────────────────────────────────────────────────────────────
 function recordPrice(price) {
-    if (!price || price < 1000 || price > 20000) return;
-    window._priceHistory.push({ price, time: Date.now() });
-    if (window._priceHistory.length > MAX_TICKS) window._priceHistory.shift();
-    document.getElementById('tick-count').textContent = window._priceHistory.length;
-}
-
-// Build candles from ticks
-function buildCandles(tf) {
-    const tfMs = TF_SECONDS[tf] * 1000;
-    const buckets = new Map();
-    
-    for (const tick of window._priceHistory) {
-        const key = Math.floor(tick.time / tfMs) * tfMs;
-        const b = buckets.get(key);
-        if (!b) {
-            buckets.set(key, { 
-                open: tick.price, high: tick.price, low: tick.price, close: tick.price, 
-                time: key, volume: 1 
-            });
-        } else {
-            b.high = Math.max(b.high, tick.price);
-            b.low = Math.min(b.low, tick.price);
-            b.close = tick.price;
-            b.volume++;
-        }
-    }
-    
-    return Array.from(buckets.values()).sort((a, b) => a.time - b.time);
-}
-
-// ════════════════════════════════════════════════════════════════
-// SMC ENGINE: Order Blocks, FVG, Fractals
-// ════════════════════════════════════════════════════════════════
-
-function findOrderBlocks(candles) {
-    const obs = [];
-    for (let i = 5; i < candles.length - 2; i++) {
-        // Bullish OB: Last bearish candle before strong bullish move
-        if (candles[i].close < candles[i].open && // bearish
-            candles[i+1].close > candles[i].open && // strong bullish
-            candles[i+2].close > candles[i+1].close) {
-            obs.push({
-                type: 'BULL',
-                high: Math.max(candles[i].high, candles[i].low),
-                low: Math.min(candles[i].high, candles[i].low),
-                index: i
-            });
-        }
-        // Bearish OB: Last bullish candle before strong bearish move
-        if (candles[i].close > candles[i].open && // bullish
-            candles[i+1].close < candles[i].open && // strong bearish
-            candles[i+2].close < candles[i+1].close) {
-            obs.push({
-                type: 'BEAR',
-                high: Math.max(candles[i].high, candles[i].low),
-                low: Math.min(candles[i].high, candles[i].low),
-                index: i
-            });
-        }
-    }
-    return obs.slice(-3); // Last 3 blocks
-}
-
-function findFVG(candles) {
-    const fvgs = [];
-    for (let i = 1; i < candles.length - 1; i++) {
-        // Bullish FVG: gap up, no trade between candles
-        if (candles[i].low > candles[i-1].high) {
-            fvgs.push({
-                type: 'BULL',
-                top: candles[i].low,
-                bottom: candles[i-1].high,
-                index: i
-            });
-        }
-        // Bearish FVG: gap down
-        if (candles[i].high < candles[i-1].low) {
-            fvgs.push({
-                type: 'BEAR',
-                top: candles[i-1].low,
-                bottom: candles[i].high,
-                index: i
-            });
-        }
-    }
-    return fvgs.slice(-3);
-}
-
-function findFractals(candles) {
-    const fracs = [];
-    for (let i = 2; i < candles.length - 2; i++) {
-        // Up fractal
-        if (candles[i].high > candles[i-1].high && candles[i].high > candles[i-2].high &&
-            candles[i].high > candles[i+1].high && candles[i].high > candles[i+2].high) {
-            fracs.push({ type: 'UP', price: candles[i].high, index: i });
-        }
-        // Down fractal
-        if (candles[i].low < candles[i-1].low && candles[i].low < candles[i-2].low &&
-            candles[i].low < candles[i+1].low && candles[i].low < candles[i+2].low) {
-            fracs.push({ type: 'DOWN', price: candles[i].low, index: i });
-        }
-    }
-    return fracs.slice(-2);
-}
-
-// ════════════════════════════════════════════════════════════════
-// DECISION LOGIC: Per-Indicator Analysis
-// ════════════════════════════════════════════════════════════════
-
-function analyzeCandles(candles) {
-    if (candles.length < 20) return null;
-    
-    const price = candles[candles.length - 1].close;
-    const closes = candles.map(c => c.close);
-    const highs = candles.map(c => c.high);
-    const lows = candles.map(c => c.low);
-    
-    const results = {
-        price,
-        indicators: {},
-        smcSignals: {},
-        finalDecision: 'WAIT',
-        entry: null,
-        sl: null,
-        tp: null
-    };
-    
-    // ── EMA Trend ──
-    const ema9 = closes.slice(-9).reduce((a,b) => a+b) / 9;
-    const ema21 = closes.slice(-21).reduce((a,b) => a+b) / 21;
-    const ema50 = closes.slice(-Math.min(50, closes.length)).reduce((a,b) => a+b) / Math.min(50, closes.length);
-    
-    if (ema9 > ema21 && ema21 > ema50) results.indicators.EMA = 'BUY';
-    else if (ema9 < ema21 && ema21 < ema50) results.indicators.EMA = 'SELL';
-    else results.indicators.EMA = 'WAIT';
-    
-    // ── RSI ──
-    let gains = 0, losses = 0;
-    for (let i = closes.length - 14; i < closes.length; i++) {
-        const d = closes[i] - closes[i-1];
-        if (d > 0) gains += d;
-        else losses -= d;
-    }
-    const rsi = 100 - 100 / (1 + (gains/14) / (losses/14 + 0.001));
-    if (rsi > 60) results.indicators.RSI = 'BUY';
-    else if (rsi < 40) results.indicators.RSI = 'SELL';
-    else results.indicators.RSI = 'WAIT';
-    
-    // ── SMC: Order Blocks ──
-    const obs = findOrderBlocks(candles);
-    if (obs.length > 0) {
-        const lastOB = obs[obs.length - 1];
-        if (lastOB.type === 'BULL' && price > lastOB.low && price < lastOB.high) {
-            results.smcSignals.OB = { signal: 'BUY', reason: 'Price in Bullish OB' };
-        } else if (lastOB.type === 'BEAR' && price > lastOB.low && price < lastOB.high) {
-            results.smcSignals.OB = { signal: 'SELL', reason: 'Price in Bearish OB' };
-        }
-    }
-    
-    // ── SMC: FVG ──
-    const fvgs = findFVG(candles);
-    if (fvgs.length > 0) {
-        const lastFVG = fvgs[fvgs.length - 1];
-        if (lastFVG.type === 'BULL' && price < lastFVG.bottom) {
-            results.smcSignals.FVG = { signal: 'BUY', reason: 'Price approaching Bullish FVG' };
-        } else if (lastFVG.type === 'BEAR' && price > lastFVG.top) {
-            results.smcSignals.FVG = { signal: 'SELL', reason: 'Price approaching Bearish FVG' };
-        }
-    }
-    
-    // ── SMC: Fractals ──
-    const fracs = findFractals(candles);
-    if (fracs.length >= 2) {
-        const lastUp = fracs.filter(f => f.type === 'UP').slice(-1)[0];
-        const lastDown = fracs.filter(f => f.type === 'DOWN').slice(-1)[0];
-        
-        if (lastUp && lastDown) {
-            if (lastUp.index > lastDown.index && price > lastDown.price) {
-                results.smcSignals.Fractal = { signal: 'BUY', reason: 'Bullish Fractal confirmed' };
-            } else if (lastDown.index > lastUp.index && price < lastUp.price) {
-                results.smcSignals.Fractal = { signal: 'SELL', reason: 'Bearish Fractal confirmed' };
-            }
-        }
-    }
-    
-    // ── FINAL DECISION ──
-    // All indicators must AGREE (not vote-based)
-    const buySignals = Object.values(results.indicators).filter(s => s === 'BUY').length;
-    const sellSignals = Object.values(results.indicators).filter(s => s === 'SELL').length;
-    const smcBuy = Object.values(results.smcSignals).filter(s => s?.signal === 'BUY').length;
-    const smcSell = Object.values(results.smcSignals).filter(s => s?.signal === 'SELL').length;
-    
-    if (buySignals >= 2 && smcBuy >= 1) {
-        results.finalDecision = 'BUY';
-        results.entry = price;
-        results.sl = price - (ema9 - ema21) * 2;
-        results.tp = price + (ema9 - ema21) * 4;
-    } else if (sellSignals >= 2 && smcSell >= 1) {
-        results.finalDecision = 'SELL';
-        results.entry = price;
-        results.sl = price + (ema21 - ema9) * 2;
-        results.tp = price - (ema21 - ema9) * 4;
-    }
-    
-    return results;
-}
-
-// ════════════════════════════════════════════════════════════════
-// TRADINGVIEW PRICE SCRAPING
-// ════════════════════════════════════════════════════════════════
-
-function getTVPrice() {
+  if (!price || price < 2000) return;
+  
+  state.priceHistory.push({price, time: Date.now()});
+  state.totalTicks++;
+  state.lastPrice = price;
+  
+  if (state.priceHistory.length > MAX_TICKS) {
+    state.priceHistory.shift();
+  }
+  
+  // Save to localStorage every 100 ticks
+  if (state.totalTicks % 100 === 0) {
     try {
-        const iframe = document.querySelector('.tradingview-widget-container iframe');
-        if (!iframe) return null;
-        
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        const spans = doc.querySelectorAll('span');
-        
-        for (const span of spans) {
-            const text = span.textContent.match(/[\d]{4}\.[\d]{2,}/);
-            if (text) {
-                const price = parseFloat(text[0]);
-                if (price > 1000 && price < 20000) return price;
-            }
-        }
+      const h = state.priceHistory.slice(-50000); // keep 50k recent
+      localStorage.setItem('ticks', JSON.stringify(h));
+      localStorage.setItem('ticksTotal', state.totalTicks.toString());
     } catch(e) {}
-    return null;
+  }
+  
+  updatePriceDisplay();
 }
 
-function startPriceFeed() {
-    setInterval(() => {
-        const price = getTVPrice();
-        if (price) {
-            recordPrice(price);
-            document.getElementById('live-price').textContent = price.toFixed(2);
-            document.getElementById('tv-status').textContent = '✅ Live';
-        }
-    }, 1000);
+function buildCandles(tf) {
+  const tfMs = TF_MAP[tf] * 1000;
+  const now = Date.now();
+  const candles = [];
+  let bucket = null;
+  
+  for (let tick of state.priceHistory) {
+    const key = Math.floor(tick.time / tfMs) * tfMs;
+    
+    if (!bucket || bucket.key !== key) {
+      if (bucket) candles.push(bucket);
+      bucket = {key, open: tick.price, high: tick.price, low: tick.price, close: tick.price, ticks: 1};
+    } else {
+      bucket.high = Math.max(bucket.high, tick.price);
+      bucket.low = Math.min(bucket.low, tick.price);
+      bucket.close = tick.price;
+      bucket.ticks++;
+    }
+  }
+  if (bucket) candles.push(bucket);
+  
+  return candles.length >= 5 ? candles : null;
 }
 
-// ════════════════════════════════════════════════════════════════
-// UI RENDERING
-// ════════════════════════════════════════════════════════════════
-
-function selectTF(tf) {
-    window._activeTF = tf;
-    document.querySelectorAll('button').forEach(b => {
-        b.style.opacity = b.textContent === tf ? '1' : '0.6';
-    });
+// ─────────────────��───────────────────────────────────────────
+// 3. ORDER BLOCKS DETECTION
+// ─────────────────────────────────────────────────────────────
+function detectOrderBlocks(candles) {
+  if (!candles || candles.length < 5) return {bull: [], bear: []};
+  
+  const n = candles.length;
+  const bull = [], bear = [];
+  
+  // Bullish OB: strong bearish candle followed by strong bullish reversal
+  for (let i = 2; i < n-1; i++) {
+    const prev = candles[i-2];
+    const curr = candles[i-1];
+    const next = candles[i];
+    
+    // prev is bearish (close < open), next is bullish (close > open)
+    if (prev.close < prev.open && next.close > next.open && next.close > curr.high) {
+      bull.push({
+        idx: i-2,
+        high: Math.max(prev.high, curr.high),
+        low: Math.min(prev.close, curr.close),
+        strength: (next.close - next.open) / (next.high - next.low)
+      });
+    }
+  }
+  
+  // Bearish OB: strong bullish followed by strong bearish reversal
+  for (let i = 2; i < n-1; i++) {
+    const prev = candles[i-2];
+    const curr = candles[i-1];
+    const next = candles[i];
+    
+    if (prev.close > prev.open && next.close < next.open && next.close < curr.low) {
+      bear.push({
+        idx: i-2,
+        high: Math.max(curr.close, next.close),
+        low: Math.min(prev.low, curr.low),
+        strength: (next.open - next.close) / (next.high - next.low)
+      });
+    }
+  }
+  
+  return {bull, bear};
 }
 
-function runAnalysis() {
-    const candles = buildCandles(window._activeTF);
-    if (!candles || candles.length < 20) {
-        alert(`Need more data for ${window._activeTF}`);
-        return;
+// ─────────────────────────────────────────────────────────────
+// 4. FVG (FAIR VALUE GAP) DETECTION
+// ─────────────────────────────────────────────────────────────
+function detectFVG(candles) {
+  if (!candles || candles.length < 3) return {bull: [], bear: []};
+  
+  const bull = [], bear = [];
+  
+  for (let i = 2; i < candles.length; i++) {
+    const c1 = candles[i-2];
+    const c2 = candles[i-1];
+    const c3 = candles[i];
+    
+    // Bullish FVG: gap up (c1 high < c3 low)
+    if (c1.high < c3.low) {
+      bull.push({
+        top: c3.low,
+        bottom: c1.high,
+        mitigated: false
+      });
     }
     
-    const analysis = analyzeCandles(candles);
-    renderResults(analysis);
+    // Bearish FVG: gap down (c3 high < c1 low)
+    if (c3.high < c1.low) {
+      bear.push({
+        top: c1.low,
+        bottom: c3.high,
+        mitigated: false
+      });
+    }
+  }
+  
+  return {bull, bear};
 }
 
-function renderResults(analysis) {
-    const grid = document.getElementById('results-grid');
-    
-    // Decision Card
-    const decisionColor = analysis.finalDecision === 'BUY' ? '--green' : 
-                         analysis.finalDecision === 'SELL' ? '--red' : '--blue';
-    
-    grid.innerHTML = `
-        <div class="card" style="border: 2px solid var(${decisionColor});">
-            <div class="card-title">DECISION</div>
-            <div class="card-value" style="color: var(${decisionColor});">${analysis.finalDecision}</div>
-        </div>
-        <div class="card">
-            <div class="card-title">ENTRY</div>
-            <div class="card-value gold">${analysis.entry?.toFixed(2) || '—'}</div>
-        </div>
-        <div class="card">
-            <div class="card-title">STOP LOSS</div>
-            <div class="card-value red">${analysis.sl?.toFixed(2) || '—'}</div>
-        </div>
-        <div class="card">
-            <div class="card-title">TAKE PROFIT</div>
-            <div class="card-value green">${analysis.tp?.toFixed(2) || '—'}</div>
-        </div>
-    `;
-    
-    // Detailed Panel
-    let html = '<table class="table"><tr><th>INDICATOR</th><th>SIGNAL</th></tr>';
-    
-    for (const [ind, sig] of Object.entries(analysis.indicators)) {
-        const sigClass = sig === 'BUY' ? 'bull' : sig === 'SELL' ? 'bear' : 'wait';
-        html += `<tr><td>${ind}</td><td class="${sigClass}">${sig}</td></tr>`;
+// ─────────────────────────────────────────────────────────────
+// 5. FRACTAL PATTERN SIMILARITY
+// ─────────────────────────────────────────────────────────────
+function detectFractals(candles) {
+  if (!candles || candles.length < 5) return {up: [], down: []};
+  
+  const up = [], down = [];
+  
+  for (let i = 2; i < candles.length - 2; i++) {
+    // Up fractal: highest point in 5-candle window
+    if (candles[i].high > candles[i-1].high && candles[i].high > candles[i-2].high &&
+        candles[i].high > candles[i+1].high && candles[i].high > candles[i+2].high) {
+      up.push({idx: i, price: candles[i].high});
     }
     
-    html += '</table><h3 style="margin-top: 20px; color: var(--gold);">📊 SMC SIGNALS</h3>';
-    
-    for (const [smc, data] of Object.entries(analysis.smcSignals)) {
-        const sigClass = data.signal === 'BUY' ? 'bull' : 'bear';
-        html += `<div class="signal-box"><strong>${smc}:</strong> <span class="${sigClass}">${data.signal}</span> - ${data.reason}</div>`;
+    // Down fractal
+    if (candles[i].low < candles[i-1].low && candles[i].low < candles[i-2].low &&
+        candles[i].low < candles[i+1].low && candles[i].low < candles[i+2].low) {
+      down.push({idx: i, price: candles[i].low});
     }
-    
-    document.getElementById('analysis-panel').innerHTML = html;
+  }
+  
+  return {up, down};
 }
 
-// Start
-startPriceFeed();
-</script>
-</body>
-</html>
+// ─────────────────────────────────────────────────────────────
+// 6. PATTERN SIMILARITY SCORE (Fractal repetition)
+// ─────────────────────────────────────────────────────────────
+function calcPatternSimilarity(candles, lookback = 8) {
+  if (!candles || candles.length < lookback + 20) return {score: 0, direction: null};
+  
+  const recent = candles.slice(-lookback).map(c => (c.close - c.open) / c.open * 100);
+  
+  let bestMatch = 0, matchDir = null;
+  
+  // Find similar pattern in history (O(n) scan)
+  for (let start = 0; start < candles.length - lookback - 5; start++) {
+    const hist = candles.slice(start, start + lookback).map(c => (c.close - c.open) / c.open * 100);
+    
+    // Euclidean distance
+    let dist = 0;
+    for (let i = 0; i < recent.length; i++) {
+      dist += (recent[i] - hist[i]) ** 2;
+    }
+    dist = Math.sqrt(dist / lookback);
+    
+    // Score: 100 = perfect match, 0 = no match
+    const score = Math.max(0, 100 - dist * 10);
+    
+    if (score > bestMatch) {
+      bestMatch = score;
+      // What happened after this pattern?
+      const after = candles.slice(start + lookback, start + lookback + 3);
+      if (after.length > 0) {
+        const futureMove = (after[after.length-1].close - candles[start + lookback].close) / candles[start + lookback].close * 100;
+        matchDir = futureMove > 0 ? 'UP' : 'DOWN';
+      }
+    }
+  }
+  
+  return {score: Math.round(bestMatch), direction: matchDir};
+}
+
+// ─────────────────────────────────────────────────────────────
+// 7. PER-TIMEFRAME INDEPENDENT SCORING
+// ─────────────────────────────────────────────────────────────
+function scoreIndicator(name, candles, price) {
+  const n = candles.length;
+  const closes = candles.map(c => c.close);
+  
+  switch(name) {
+    case 'OB': {
+      const ob = detectOrderBlocks(candles);
+      const lastBull = ob.bull[ob.bull.length-1];
+      const lastBear = ob.bear[ob.bear.length-1];
+      
+      if (lastBull && price < lastBull.high && price > lastBull.low) {
+        return {signal: 'BUY', strength: Math.round(lastBull.strength * 100), label: 'In Bullish OB'};
+      }
+      if (lastBear && price < lastBear.high && price > lastBear.low) {
+        return {signal: 'SELL', strength: Math.round(lastBear.strength * 100), label: 'In Bearish OB'};
+      }
+      return {signal: 'NEUT', strength: 0, label: 'No active OB'};
+    }
+    
+    case 'FVG': {
+      const fvg = detectFVG(candles);
+      const bullGaps = fvg.bull.filter(g => !g.mitigated);
+      const bearGaps = fvg.bear.filter(g => !g.mitigated);
+      
+      if (bullGaps.length > 0 && price < bullGaps[bullGaps.length-1].bottom) {
+        return {signal: 'BUY', strength: 70, label: `Gap to ${bullGaps[bullGaps.length-1].bottom.toFixed(2)}`};
+      }
+      if (bearGaps.length > 0 && price > bearGaps[bearGaps.length-1].top) {
+        return {signal: 'SELL', strength: 70, label: `Gap to ${bearGaps[bearGaps.length-1].bottom.toFixed(2)}`};
+      }
+      return {signal: 'NEUT', strength: 0, label: 'No active FVG'};
+    }
+    
+    case 'FRACTAL': {
+      const frac = detectFractals(candles);
+      const lastUp = frac.up[frac.up.length-1];
+      const lastDown = frac.down[frac.down.length-1];
+      
+      if (lastUp && lastDown) {
+        const isBullish = lastUp.idx > lastDown.idx && price > lastDown.price;
+        if (isBullish) return {signal: 'BUY', strength: 65, label: 'Fractal Bull'};
+        return {signal: 'SELL', strength: 65, label: 'Fractal Bear'};
+      }
+      return {signal: 'NEUT', strength: 0, label: 'Insufficient fractals'};
+    }
+    
+    case 'PATTERN': {
+      const sim = calcPatternSimilarity(candles);
+      if (sim.score > 60) {
+        return {signal: sim.direction === 'UP' ? 'BUY' : 'SELL', strength: sim.score, label: `Pattern ${sim.score}% match`};
+      }
+      return {signal: 'NEUT', strength: sim.score, label: `Pattern ${sim.score}% match`};
+    }
+    
+    case 'EMA': {
+      const ema9 = closes.slice(-9).reduce((a,b)=>a+b,0)/9;
+      const ema21 = closes.slice(-21).reduce((a,b)=>a+b,0)/Math.min(21,n);
+      const ema50 = closes.slice(-50).reduce((a,b)=>a+b,0)/Math.min(50,n);
+      
+      if (ema9 > ema21 && ema21 > ema50 && price > ema50) {
+        return {signal: 'BUY', strength: 80, label: 'EMA 9>21>50 aligned'};
+      }
+      if (ema9 < ema21 && ema21 < ema50 && price < ema50) {
+        return {signal: 'SELL', strength: 80, label: 'EMA descending'};
+      }
+      return {signal: 'NEUT', strength: 40, label: 'EMA neutral'};
+    }
+    
+    case 'RSI': {
+      let gains = 0, losses = 0;
+      for (let i = n-14; i < n; i++) {
+        const d = closes[i] - closes[i-1];
+        if (d > 0) gains += d; else losses -= d;
+      }
+      const rsi = 100 - 100/(1 + (gains/14)/(losses/14 || 0.001));
+      
+      if (rsi > 70) return {signal: 'SELL', strength: 75, label: `RSI ${rsi.toFixed(0)} overbought`};
+      if (rsi < 30) return {signal: 'BUY', strength: 75, label: `RSI ${rsi.toFixed(0)} oversold`};
+      if (rsi > 55 && rsi < 70) return {signal: 'BUY', strength: 60, label: `RSI ${rsi.toFixed(0)} bullish`};
+      if (rsi < 45 && rsi > 30) return {signal: 'SELL', strength: 60, label: `RSI ${rsi.toFixed(0)} bearish`};
+      return {signal: 'NEUT', strength: 50, label: `RSI ${rsi.toFixed(0)}`};
+    }
+    
+    default: return {signal: 'NEUT', strength: 0, label: 'Unknown'};
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 8. INDEPENDENT ENTRY DECISION
+// ─────────────────────────────────────────────────────────────
+function decideEntry(tf) {
+  const candles = buildCandles(tf);
+  if (!candles || candles.length < 10) return null;
+  
+  const price = state.lastPrice;
+  const indicators = ['OB', 'FVG', 'FRACTAL', 'PATTERN', 'EMA', 'RSI'];
+  const scores = [];
+  
+  for (let ind of indicators) {
+    const score = scoreIndicator(ind, candles, price);
+    scores.push({indicator: ind, ...score});
+  }
+  
+  // Count votes: need at least 3 indicators agreeing for BUY/SELL
+  const buyVotes = scores.filter(s => s.signal === 'BUY').length;
+  const sellVotes = scores.filter(s => s.signal === 'SELL').length;
+  
+  let decision = 'WAIT';
+  if (buyVotes >= 3) decision = 'BUY';
+  else if (sellVotes >= 3) decision = 'SELL';
+  
+  // Calculate SL/TP based on recent ATR
+  const atr = candles.slice(-14).reduce((s, c, i, a) =>
+    i > 0 ? s + Math.max(c.high - c.low, Math.abs(c.high - a[i-1].close), Math.abs(c.low - a[i-1].close)) : s, 0) / 13;
+  
+  const sl = decision === 'BUY' ? (price - atr * 1.5).toFixed(2) : (price + atr * 1.5).toFixed(2);
+  const tp = decision === 'BUY' ? (price + atr * 3).toFixed(2) : (price - atr * 3).toFixed(2);
+  
+  return {
+    tf,
+    decision,
+    price: price.toFixed(2),
+    sl,
+    tp,
+    rr: ((Math.abs(tp - price) / Math.abs(price - sl)).toFixed(2)),
+    indicators: scores,
+    confidence: Math.round(Math.max(buyVotes, sellVotes) / indicators.length * 100)
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 9. UI RENDERING
+// ─────────────────────────────────────────────────────────────
+function updatePriceDisplay() {
+  const price = state.lastPrice;
+  document.getElementById('live-price').textContent = '$' + price.toFixed(2);
+  document.getElementById('ov-price').textContent = '$' + price.toFixed(2);
+  document.getElementById('ov-ticks').textContent = state.totalTicks.toLocaleString();
+  
+  const m5 = buildCandles('M5');
+  document.getElementById('ov-candles').textContent = (m5 ? m5.length : 0);
+}
+
+function runFullAnalysis() {
+  const signals = TFs.map(tf => decideEntry(tf)).filter(s => s);
+  
+  if (signals.length === 0) {
+    document.getElementById('ov-status').textContent = '❌ Insufficient data';
+    return;
+  }
+  
+  // Find strongest signal
+  const strongest = signals.sort((a, b) => b.confidence - a.confidence)[0];
+  const recommendation = strongest.decision;
+  
+  document.getElementById('ov-recommendation').textContent = recommendation;
+  document.getElementById('ov-recommendation').className = recommendation === 'BUY' ? 'buy' : recommendation === 'SELL' ? 'sell' : 'neutral';
+  document.getElementById('ov-confidence').textContent = strongest.confidence + '%';
+  document.getElementById('ov-action').textContent = recommendation === 'WAIT' ? 'Await more signals' : 'Ready to trade';
+  document.getElementById('ov-status').textContent = '✅ Ready';
+  
+  // Show analysis panel
+  renderAnalysis(signals);
+  switchTab(document.querySelectorAll('.tab')[1], 'analysis');
+}
+
+function renderAnalysis(signals) {
+  const html = signals.map(s => `
+    <div class="card">
+      <div class="card-title">${s.tf} TIMEFRAME</div>
+      <div class="row">
+        <span class="label">Signal:</span>
+        <span class="${s.decision === 'BUY' ? 'buy' : s.decision === 'SELL' ? 'sell' : 'neutral'}">${s.decision}</span>
+      </div>
+      <div class="row">
+        <span class="label">Price:</span>
+        <span class="value">${s.price}</span>
+      </div>
+      <div class="row">
+        <span class="label">Stop Loss:</span>
+        <span class="value">${s.sl}</span>
+      </div>
+      <div class="row">
+        <span class="label">Take Profit:</span>
+        <span class="value">${s.tp}</span>
+      </div>
+      <div class="row">
+        <span class="label">R/R Ratio:</span>
+        <span class="value">1:${s.rr}</span>
+      </div>
+      <div class="row">
+        <span class="label">Confidence:</span>
+        <span class="value">${s.confidence}%</span>
+      </div>
+      <div class="score-bar"><div class="score-fill" style="width: ${s.confidence}%"></div></div>
+      <table style="margin-top: 12px; font-size: 9px;">
+        <tr style="background: rgba(245,200,66,0.1);">
+          <th>Indicator</th>
+          <th>Signal</th>
+          <th>Strength</th>
+          <th>Description</th>
+        </tr>
+        ${s.indicators.map(ind => `<tr>
+          <td>${ind.indicator}</td>
+          <td class="${ind.signal === 'BUY' ? 'buy' : ind.signal === 'SELL' ? 'sell' : 'neutral'}">${ind.signal}</td>
+          <td>${ind.strength}%</td>
+          <td>${ind.label}</td>
+        </tr>`).join('')}
+      </table>
+      <button class="btn" onclick="addToJournal('${s.tf}','${s.decision}','${s.price}','${s.sl}','${s.tp}')" style="width: 100%; margin-top: 12px;">📓 Add to Journal</button>
+    </div>
+  `).join('');
+  
+  document.getElementById('analysis-content').innerHTML = html || '<p style="color: var(--muted);">No signals generated</p>';
+  
+  // Populate TF selector
+  document.getElementById('tf-selector').innerHTML = TFs.map(tf => 
+    `<button class="tf-btn ${tf === 'M5' ? 'active' : ''}" onclick="state.activeTF='${tf}'; updateAnalysis()">${tf}</button>`
+  ).join('');
+}
+
+function renderSignals() {
+  const signals = TFs.map(tf => decideEntry(tf)).filter(s => s && s.decision !== 'WAIT');
+  
+  const html = signals.length === 0
+    ? '<p style="color: var(--muted); grid-column: 1/-1;">No active signals</p>'
+    : signals.map(s => `
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div class="card-title" style="margin: 0;">${s.tf}</div>
+          <span class="${s.decision === 'BUY' ? 'buy' : 'sell'}" style="font-size: 20px; font-weight: 900;">${s.decision}</span>
+        </div>
+        <div class="row"><span class="label">Entry:</span><span class="value">${s.price}</span></div>
+        <div class="row"><span class="label">SL:</span><span class="sell">${s.sl}</span></div>
+        <div class="row"><span class="label">TP:</span><span class="buy">${s.tp}</span></div>
+        <div class="row"><span class="label">R/R:</span><span class="value">1:${s.rr}</span></div>
+        <div class="score-bar"><div class="score-fill" style="width: ${s.confidence}%"></div></div>
+        <button class="btn" onclick="addToJournal('${s.tf}','${s.decision}','${s.price}','${s.sl}','${s.tp}')" style="width: 100%; margin-top: 12px;">✅ Execute</button>
+      </div>
+    `).join('');
+  
+  document.getElementById('signals-content').innerHTML = html;
+}
+
+function switchTab(el, panelId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  
