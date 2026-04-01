@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XAUUSD · SMC Weapon v55 | Real-Time Ticks</title>
+<title>XAUUSD · SMC Weapon v55 | Stable Real-Time</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -98,7 +98,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </head>
 <body>
 <div class="header">
-  <div><div class="logo">XAUUSD ⚔️</div><div class="logo-sub">SMC WEAPON v55 · REAL TICKS</div></div>
+  <div><div class="logo">XAUUSD ⚔️</div><div class="logo-sub">SMC WEAPON v55 · STABLE ANALYSIS</div></div>
   <div class="tv-widget-container">
     <iframe src="https://s.tradingview.com/embed-widget/ticker/?locale=en#%7B%22symbols%22%3A%5B%7B%22proName%22%3A%22FOREXCOM%3AXAUUSD%22%2C%22title%22%3A%22XAUUSD%22%7D%5D%2C%22showSymbolLogo%22%3Atrue%2C%22colorTheme%22%3A%22dark%22%2C%22isTransparent%22%3Atrue%2C%22largeChartUrl%22%3A%22%22%2C%22width%22%3A%22180%22%2C%22height%22%3A%2232%22%2C%22utm_source%22%3A%22smc_weapon%22%2C%22utm_medium%22%3A%22widget%22%2C%22utm_campaign%22%3A%22ticker%22%7D" style="height:32px; width:180px;"></iframe>
   </div>
@@ -120,15 +120,23 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <script>
-// ==================== PERSISTENT TICK HISTORY ====================
+// ==================== CONFIGURATION ====================
 const MAX_TICKS = 200000;
-const STORAGE_KEY = 'xau_smc_ticks_final';
+const STORAGE_KEY = 'xau_smc_ticks_v4';
+const STABLE_CANDLE_DURATION = 30000; // 30 seconds stable synthetic candles
+const TF_MS = { M1:60000, M5:300000, M15:900000, M30:1800000, H1:3600000, H4:14400000, D1:86400000 };
+const TFS = ['M1','M5','M15','M30','H1','H4','D1'];
+const TF_LABEL = {M1:'1MIN',M5:'5MIN',M15:'15MIN',M30:'30MIN',H1:'1H',H4:'4H',D1:'DAY'};
+
+// ==================== GLOBAL STATE ====================
 window._priceHistory = [];
 window._lastKnownPrice = null;
+window._syntheticCache = {};      // stores synthetic candles per TF
 window._lastFullUpdate = 0;
 window._pendingFullUpdate = false;
-window._syntheticCache = {};
+window._cachedAnalyses = {};       // store last analysis result per TF
 
+// ==================== PERSISTENCE ====================
 function saveTicks() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(window._priceHistory.slice(-MAX_TICKS)));
@@ -143,28 +151,25 @@ function loadTicks() {
       if (Array.isArray(parsed) && parsed.length <= MAX_TICKS && parsed.length > 0) {
         window._priceHistory = parsed;
         window._lastKnownPrice = parsed[parsed.length-1].p;
-        document.getElementById('tickCount').innerText = parsed.length.toLocaleString('el-GR');
-        updateTickPopup();
+        updateTickDisplay();
         return;
       }
     }
   } catch(e) {}
-  // seed with 500 ticks around 4700 (OANDA)
-  const seedPrice = 4700.00;
-  let price = seedPrice;
+  // Seed with 500 realistic ticks around 4700
+  let price = 4700.00;
   const history = [];
   for (let i=0; i<500; i++) {
     const t = Date.now() - (500-i)*10000;
     const trend = i * 0.05;
     const noise = (Math.random()-0.5)*1.5;
-    price = seedPrice - 12 + trend + noise;
+    price = 4700 - 12 + trend + noise;
     history.push({ t, p: parseFloat(price.toFixed(2)), src: 'seed' });
   }
   window._priceHistory = history;
   window._lastKnownPrice = history[history.length-1].p;
   saveTicks();
-  document.getElementById('tickCount').innerText = history.length.toLocaleString('el-GR');
-  updateTickPopup();
+  updateTickDisplay();
 }
 
 function recordTick(price, src) {
@@ -174,21 +179,18 @@ function recordTick(price, src) {
   if (window._priceHistory.length > MAX_TICKS) window._priceHistory.shift();
   window._lastKnownPrice = price;
   saveTicks();
-  document.getElementById('tickCount').innerText = window._priceHistory.length.toLocaleString('el-GR');
-  updateTickPopup();
+  updateTickDisplay();
   return true;
 }
 
-function updateTickPopup() {
-  const listDiv = document.getElementById('tickList');
-  if (!listDiv) return;
-  const last = window._priceHistory.slice(-20).reverse();
-  listDiv.innerHTML = last.map(t => `${new Date(t.t).toLocaleTimeString()} : ${t.p.toFixed(2)} (${t.src})`).join('<br>');
+function updateTickDisplay() {
+  const count = window._priceHistory.length;
+  document.getElementById('tickCount').innerText = count.toLocaleString('el-GR');
+  const last20 = window._priceHistory.slice(-20).reverse();
+  document.getElementById('tickList').innerHTML = last20.map(t => `${new Date(t.t).toLocaleTimeString()} : ${t.p.toFixed(2)} (${t.src})`).join('<br>');
 }
 
-// ==================== CANDLE GENERATION ====================
-const TF_MS = { M1:60000, M5:300000, M15:900000, M30:1800000, H1:3600000, H4:14400000, D1:86400000 };
-
+// ==================== CANDLE GENERATION (Stable) ====================
 function buildCandlesFromTicks(tf, limit=250) {
   const hist = window._priceHistory;
   if (hist.length < 20) return null;
@@ -208,12 +210,7 @@ function buildCandlesFromTicks(tf, limit=250) {
   return Array.from(map.values()).sort((a,b)=>a.t-b.t).slice(-limit);
 }
 
-function getStableSynthetic(tf, basePrice, limit=200) {
-  const key = `${tf}_${Math.floor(basePrice)}`;
-  const now = Date.now();
-  if (window._syntheticCache[key] && now - window._syntheticCache[key].timestamp < 10000) {
-    return window._syntheticCache[key].candles.slice(-limit);
-  }
+function generateStableSynthetic(tf, basePrice, limit=200) {
   const ms = TF_MS[tf];
   const volMap = { M1:1.5, M5:3.2, M15:6.0, M30:10, H1:16, H4:35, D1:68 };
   const vol = volMap[tf] || 12;
@@ -229,18 +226,30 @@ function getStableSynthetic(tf, basePrice, limit=200) {
     price = c;
     t += ms;
   }
-  window._syntheticCache[key] = { candles, timestamp: now };
-  return candles.slice(-limit);
+  return candles;
 }
 
-function getCandles(tf, limit=200) {
-  const live = buildCandlesFromTicks(tf, limit);
-  if (live && live.length >= 30) return live;
+function getStableCandles(tf, limit=200) {
+  // First try real ticks
+  const real = buildCandlesFromTicks(tf, limit);
+  if (real && real.length >= 30) return real;
+
+  // Otherwise use synthetic, but keep them stable for STABLE_CANDLE_DURATION
+  const now = Date.now();
+  const cacheKey = tf;
+  const cached = window._syntheticCache[cacheKey];
+  if (cached && (now - cached.timestamp) < STABLE_CANDLE_DURATION) {
+    return cached.candles.slice(-limit);
+  }
+
+  // Generate new stable synthetic candles
   const base = window._lastKnownPrice || 4700;
-  return getStableSynthetic(tf, base, limit);
+  const newCandles = generateStableSynthetic(tf, base, 300); // generate more than needed
+  window._syntheticCache[cacheKey] = { candles: newCandles, timestamp: now, basePrice: base };
+  return newCandles.slice(-limit);
 }
 
-// ==================== INDICATORS ====================
+// ==================== INDICATORS & SMC ====================
 function calcATR(candles, period=14) {
   if (!candles || candles.length < 2) return 15;
   let sum = 0;
@@ -278,12 +287,10 @@ function detectOrderBlocks(candles) {
   for (let i=3; i<candles.length-1; i++) {
     const prev = candles[i-1], nxt = candles[i+1];
     const atr = calcATR(candles.slice(Math.max(0,i-12), i+2));
-    // Bullish OB
     if (prev.c < prev.o && nxt.c > nxt.o && (nxt.c-nxt.o) > (nxt.h-nxt.l)*0.55 && nxt.c > prev.h + (nxt.h-nxt.l)*0.2) {
       const strength = Math.min(100, Math.round(((nxt.c - prev.l)/atr)*38));
       if (strength>35) obs.push({ type:'BULL', top:prev.h, bottom:prev.l, mid:(prev.h+prev.l)/2, strength });
     }
-    // Bearish OB
     if (prev.c > prev.o && nxt.c < nxt.o && (nxt.o-nxt.c) > (nxt.h-nxt.l)*0.55 && nxt.c < prev.l - (nxt.h-nxt.l)*0.2) {
       const strength = Math.min(100, Math.round(((prev.h - nxt.c)/atr)*38));
       if (strength>35) obs.push({ type:'BEAR', top:prev.h, bottom:prev.l, mid:(prev.h+prev.l)/2, strength });
@@ -291,7 +298,6 @@ function detectOrderBlocks(candles) {
   }
   return obs.slice(-6);
 }
-
 function detectFVGs(candles) {
   const fvgs = [];
   if (candles.length < 5) return fvgs;
@@ -310,7 +316,6 @@ function detectFVGs(candles) {
   const price = candles[candles.length-1].c;
   return fvgs.slice(-6).map(f => ({ ...f, filled: (f.type==='BULL' ? price<f.bottom : price>f.top) }));
 }
-
 function detectStructure(candles) {
   if (candles.length < 25) return { bos:'NONE', trend:'NEUTRAL', strength:0 };
   const look = Math.min(18, Math.floor(candles.length/3));
@@ -328,7 +333,6 @@ function detectStructure(candles) {
   else if (curHigh<prevHigh && curLow>prevLow) bos='CHoCH';
   return { bos, trend, strength };
 }
-
 function fractalPatternAnalysis(candles, patternLen=12, lookback=180) {
   if (candles.length < patternLen+15) return { similarity:0, direction:'NEUTRAL', target:null, confidence:0, matches:0 };
   const closes = candles.map(c=>c.c);
@@ -434,12 +438,14 @@ function calcTargets(price, atr, tf, direction, obs, fractal) {
     const bearOB = obs.filter(o=>o.type==='BEAR'&&o.bottom>price).sort((a,b)=>a.bottom-b.bottom)[0];
     if (bearOB && bearOB.bottom < tp && bearOB.bottom > price+atr*0.7) tp = bearOB.bottom;
     if (fractal.target && fractal.direction==='BULL' && fractal.target>price) tp = Math.min(tp, fractal.target);
-  } else {
+  } else if (direction==='SELL') {
     sl = price + atr*slMul;
     tp = price - atr*tpMul;
     const bullOB = obs.filter(o=>o.type==='BULL'&&o.top<price).sort((a,b)=>b.top-a.top)[0];
     if (bullOB && bullOB.top > tp && bullOB.top < price-atr*0.7) tp = bullOB.top;
     if (fractal.target && fractal.direction==='BEAR' && fractal.target<price) tp = Math.max(tp, fractal.target);
+  } else {
+    return { tp: price, sl: price, rr: 0 };
   }
   tp = parseFloat(tp.toFixed(2)); sl = parseFloat(sl.toFixed(2));
   const rr = Math.abs(tp-price)/Math.abs(sl-price);
@@ -447,12 +453,9 @@ function calcTargets(price, atr, tf, direction, obs, fractal) {
 }
 
 // ==================== ANALYSE TIMEFRAME ====================
-const TFS = ['M1','M5','M15','M30','H1','H4','D1'];
-const TF_LABEL = {M1:'1MIN',M5:'5MIN',M15:'15MIN',M30:'30MIN',H1:'1H',H4:'4H',D1:'DAY'};
-
 function analyseTF(tf) {
   try {
-    const candles = getCandles(tf, 260);
+    const candles = getStableCandles(tf, 260);
     if (!candles || candles.length < 30) return null;
     const price = candles[candles.length-1].c;
     const atr = calcATR(candles);
@@ -474,7 +477,24 @@ function analyseTF(tf) {
   } catch(e) { console.warn(tf, e); return null; }
 }
 
-// ==================== RENDER (throttled) ====================
+// ==================== RENDER (Only when analysis changes) ====================
+let _lastRenderedAnalyses = {};
+
+function renderOverview(analyses) {
+  const row = document.getElementById('overviewRow');
+  row.innerHTML = analyses.map(a => {
+    if (!a) return '';
+    const col = a.decision.direction==='BUY' ? 'var(--green)' : a.decision.direction==='SELL' ? 'var(--red)' : 'var(--muted2)';
+    const score = a.decision.direction==='BUY' ? a.decision.buyScore : a.decision.direction==='SELL' ? a.decision.sellScore : 0;
+    return `<div class="ov-card">
+      <div class="ov-tf" style="color:${col}">${TF_LABEL[a.tf]}</div>
+      <div class="ov-sig" style="color:${col}">${a.decision.direction}</div>
+      <div class="ov-conf">Req ${score}/5</div>
+      <div class="ov-bar"><div class="ov-bar-fill" style="width:${a.decision.confidence}%;background:${col}"></div></div>
+    </div>`;
+  }).join('');
+}
+
 function miniCandleViz(candles) {
   if (!candles || !candles.length) return '';
   const maxH = Math.max(...candles.map(c=>c.h)), minL = Math.min(...candles.map(c=>c.l)), rng = maxH-minL||1;
@@ -492,20 +512,7 @@ function miniCandleViz(candles) {
   }).join('');
 }
 function fmt(p) { return p ? p.toFixed(2) : '—'; }
-function renderOverview(analyses) {
-  const row = document.getElementById('overviewRow');
-  row.innerHTML = analyses.map(a => {
-    if (!a) return '';
-    const col = a.decision.direction==='BUY' ? 'var(--green)' : a.decision.direction==='SELL' ? 'var(--red)' : 'var(--muted2)';
-    const score = a.decision.direction==='BUY' ? a.decision.buyScore : a.decision.direction==='SELL' ? a.decision.sellScore : 0;
-    return `<div class="ov-card">
-      <div class="ov-tf" style="color:${col}">${TF_LABEL[a.tf]}</div>
-      <div class="ov-sig" style="color:${col}">${a.decision.direction}</div>
-      <div class="ov-conf">Req ${score}/5</div>
-      <div class="ov-bar"><div class="ov-bar-fill" style="width:${a.decision.confidence}%;background:${col}"></div></div>
-    </div>`;
-  }).join('');
-}
+
 function renderReqList(checks) {
   const items = [
     {key:'ob', label:'Order Block'},
@@ -525,6 +532,7 @@ function renderReqList(checks) {
     </div>`;
   }).join('');
 }
+
 function renderTFBlock(a) {
   if (!a) return '';
   const isBull = a.decision.direction==='BUY', isSell = a.decision.direction==='SELL';
@@ -564,12 +572,12 @@ function renderTFBlock(a) {
   </div>`;
 }
 
-function throttledFullUpdate() {
+function fullUpdate(force = false) {
   const now = Date.now();
-  if (now - window._lastFullUpdate < 3800) {
+  if (!force && now - window._lastFullUpdate < 3800) {
     if (!window._pendingFullUpdate) {
       window._pendingFullUpdate = true;
-      setTimeout(() => { window._pendingFullUpdate = false; throttledFullUpdate(); }, 3800);
+      setTimeout(() => { window._pendingFullUpdate = false; fullUpdate(true); }, 3800);
     }
     return;
   }
@@ -628,23 +636,24 @@ function onNewPrice(price, source) {
   priceEl.style.color = chg > 0 ? 'var(--green)' : chg < 0 ? 'var(--red)' : 'var(--gold)';
   const chgStr = (chg >= 0 ? '+' : '') + chg.toFixed(2);
   document.getElementById('priceMeta').innerHTML = source === 'simulation' ? `SIM ● ${chgStr}` : `XAUUSD ● ${chgStr}`;
-  throttledFullUpdate(); // update only when necessary
+  // Only update full analysis if enough ticks have accumulated or price changed significantly
+  if (window._priceHistory.length % 10 === 0) fullUpdate(); // throttled inside
 }
 
 // ==================== INIT ====================
 window.addEventListener('DOMContentLoaded', () => {
   loadTicks();
-  throttledFullUpdate();
+  fullUpdate(true);
   fetchYahooPrice();
-  setInterval(fetchYahooPrice, 5000);
-  setInterval(throttledFullUpdate, 5000);
+  setInterval(fetchYahooPrice, 6000);
+  setInterval(() => fullUpdate(), 5000);
   // popup toggle
   const btn = document.getElementById('tickCounterBtn');
   const popup = document.getElementById('tickPopup');
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     popup.classList.toggle('show');
-    updateTickPopup();
+    updateTickDisplay();
   });
   document.addEventListener('click', (e) => {
     if (!btn.contains(e.target) && !popup.contains(e.target)) popup.classList.remove('show');
