@@ -1,154 +1,131 @@
-<!DOCTYPE html>
-<html lang="el">
-<head>
-<meta charset="UTF-8">
-<title>XAUUSD · SMC Weapon v56 ULTRA</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Rajdhani:wght@500&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg:#050709; --surface:#090d12; --border:#1c2a3a;
-    --gold:#f5c842; --green:#00e5a0; --red:#ff4060; --text:#c8d8e8;
-  }
-  body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; margin: 0; overflow-x: hidden; }
-  .header { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(5,7,9,0.9); position: sticky; top: 0; z-index: 1000; }
-  .price-big { font-family: 'Orbitron', sans-serif; font-size: 24px; color: var(--gold); }
-  #tv-widget-container { height: 450px; width: 100%; border-bottom: 1px solid var(--border); }
-  .stats-bar { display: flex; gap: 20px; font-family: 'Share Tech Mono', sans-serif; font-size: 11px; padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
-  .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; }
-  .tag { padding: 2px 6px; border-radius: 3px; font-size: 10px; border: 1px solid currentColor; }
-  .pulse { width: 8px; height: 8px; background: var(--green); border-radius: 50%; display: inline-block; animation: p 1.5s infinite; }
-  @keyframes p { 0% { box-shadow: 0 0 0 0 rgba(0,229,160,0.7); } 100% { box-shadow: 0 0 0 8px rgba(0,229,160,0); } }
-</style>
-</head>
-<body>
-
-<div class="header">
-  <div>
-    <div style="font-family:'Orbitron'; letter-spacing:3px; color:var(--gold)">XAUUSD SMC v56</div>
-    <div style="font-size:10px; color:var(--text); opacity:0.6">INDEXEDDB PERSISTENCE ACTIVE</div>
-  </div>
-  <div style="text-align:center">
-    <div id="livePrice" class="price-big">0000.00</div>
-    <div id="priceMeta" style="font-size:10px; font-family:'Share Tech Mono'">INITIALIZING...</div>
-  </div>
-  <div class="live-badge"><span class="pulse"></span> REAL-TIME</div>
-</div>
-
-<div class="stats-bar">
-  <div>TICKS IN DB: <span id="dbCount" style="color:var(--gold)">0</span></div>
-  <div>DB STORAGE: <span id="dbSize" style="color:var(--gold)">0.00</span> MB</div>
-  <div>SOURCE: <span id="dataSource" style="color:var(--green)">WAITING...</span></div>
-</div>
-
-<div id="tv-widget-container">
-  <div class="tradingview-widget-container" style="height:100%;width:100%">
-    <div id="tradingview_main"></div>
-    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-    <script type="text/javascript">
-      new TradingView.widget({
-        "autosize": true,
-        "symbol": "OANDA:XAUUSD",
-        "interval": "1",
-        "timezone": "Etc/UTC",
-        "theme": "dark",
-        "style": "1",
-        "locale": "en",
-        "enable_publishing": false,
-        "hide_top_toolbar": true,
-        "container_id": "tradingview_main"
-      });
-    </script>
-  </div>
-</div>
-
-<div class="main-grid">
-  <div id="analysisOutput"></div>
-</div>
-
-<script>
 // ═══════════════════════════════════════════
-// 1. INDEXEDDB SYSTEM (ΓΙΑ 200.000 TICKS)
+// 1. INDEXEDDB PERSISTENCE (200K TICKS CAPACITY)
 // ═══════════════════════════════════════════
-const DB_NAME = "SMC_Weapon_DB";
-const STORE_NAME = "Ticks";
+const DB_NAME = "XAUUSD_SMC_DB";
+const STORE_NAME = "TickHistory";
 let db;
 
-const initDB = () => {
-  return new Promise((resolve) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = (e) => {
-      db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "t" });
-      }
-    };
-    request.onsuccess = (e) => {
-      db = e.target.result;
-      resolve();
-    };
-  });
-};
-
-async function saveTick(tick) {
-  const tx = db.transaction(STORE_NAME, "readwrite");
-  const store = tx.objectStore(STORE_NAME);
-  store.put(tick);
-  
-  // Cleanup παλιών δεδομένων (διατήρηση 200K)
-  const countRequest = store.count();
-  countRequest.onsuccess = () => {
-    if (countRequest.result > 200000) {
-      const range = IDBKeyRange.upperBound(Date.now() - 1000 * 60 * 60 * 24); // π.χ. σβήσε παλαιότερα από 24h
-      // store.delete(range); // Ενεργοποίησε αν θες hard limit
-    }
-    document.getElementById('dbCount').textContent = countRequest.result.toLocaleString();
-  };
+async function initStorage() {
+    return new Promise((resolve) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = (e) => {
+            db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: "t" });
+            }
+        };
+        request.onsuccess = (e) => {
+            db = e.target.result;
+            resolve();
+        };
+    });
 }
 
-// ═══════════════════════════════════════════
-// 2. REAL-TIME FETCH (CORS BYPASS)
-// ═══════════════════════════════════════════
-async function getLivePrice() {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1m&range=1d`;
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-
-  try {
-    const res = await fetch(proxyUrl);
-    const data = await res.json();
-    const json = JSON.parse(data.contents);
-    const meta = json.chart.result[0].meta;
-    const price = meta.regularMarketPrice;
+async function persistTick(price) {
+    const tick = { t: Date.now(), p: price };
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    store.add(tick);
     
-    if (price) {
-      updatePriceUI(price);
-      saveTick({ t: Date.now(), p: price });
-      document.getElementById('dataSource').textContent = "YAHOO_LIVE";
+    // UI Update για το μέγεθος της βάσης
+    const countRequest = store.count();
+    countRequest.onsuccess = () => {
+        document.getElementById('dbCount').textContent = countRequest.result.toLocaleString();
+        // Εδώ μπορείς να προσθέσεις logic για σβήσιμο παλαιότερων αν θες αυστηρό limit
+    };
+}
+
+// ═══════════════════════════════════════════
+// 2. ΔΙΟΡΘΩΜΕΝΗ SMC ΛΟΓΙΚΗ (HIGH/LOW OBs & GOLD ATR)
+// ═══════════════════════════════════════════
+
+function detectOrderBlocks(candles) {
+    const obs = [];
+    if (!candles || candles.length < 5) return obs;
+
+    for (let i = 2; i < candles.length - 1; i++) {
+        const prev = candles[i-1]; // Το "Candidate" OB κερί
+        const current = candles[i]; // Το κερί που κάνει το Breakout (BOS)
+
+        // BULLISH OB: Το High του breakout κεριού κλείνει πάνω από το High του προηγούμενου πτωτικού
+        if (current.c > prev.h && prev.c < prev.o) {
+            const atr = calcATR(candles.slice(0, i));
+            const expansion = current.c - prev.h;
+            
+            if (expansion > atr * 0.5) { // Ισχυρή κίνηση (Displacement)
+                obs.push({
+                    type: 'BULL',
+                    top: prev.h,    // Διόρθωση: Ολόκληρο το High/Low range
+                    bottom: prev.l,
+                    mid: (prev.h + prev.l) / 2,
+                    strength: Math.min(100, Math.round((expansion / atr) * 40)),
+                    t: prev.t
+                });
+            }
+        }
+
+        // BEARISH OB: Το Low του breakout κεριού κλείνει κάτω από το Low του προηγούμενου ανοδικού
+        if (current.c < prev.l && prev.c > prev.o) {
+            const atr = calcATR(candles.slice(0, i));
+            const expansion = prev.l - current.c;
+
+            if (expansion > atr * 0.5) {
+                obs.push({
+                    type: 'BEAR',
+                    top: prev.h,    // Διόρθωση: Ολόκληρο το High/Low range
+                    bottom: prev.l,
+                    mid: (prev.h + prev.l) / 2,
+                    strength: Math.min(100, Math.round((expansion / atr) * 40)),
+                    t: prev.t
+                });
+            }
+        }
     }
-  } catch (e) {
-    console.error("Fetch Error:", e);
-  }
-}
-
-function updatePriceUI(price) {
-  const el = document.getElementById('livePrice');
-  const oldPrice = parseFloat(el.textContent);
-  el.textContent = price.toFixed(2);
-  el.style.color = price >= oldPrice ? "var(--green)" : "var(--red)";
-  document.getElementById('priceMeta').textContent = `XAUUSD · SPYDER ACTIVE · ${new Date().toLocaleTimeString()}`;
+    return obs.slice(-5); // Κρατάμε τα 5 πιο πρόσφατα
 }
 
 // ═══════════════════════════════════════════
-// 3. SMC LOGIC FIXES (OB & FVG)
+// 3. GOLD VOLATILITY SCALING (ATR FIX)
 // ═══════════════════════════════════════════
-// Εδώ ενσωματώνεις τη διορθωμένη detectOrderBlocks που συζητήσαμε (High/Low)
+function getGoldVolatilityScale(tf) {
+    // Προσαρμογή του volMap για τις πραγματικές κινήσεις του XAUUSD
+    const goldVol = {
+        M1: 0.85,  // ~85 pips avg move
+        M5: 1.80,  // ~1.8$ avg move
+        M15: 3.50,
+        H1: 8.00,
+        H4: 15.00,
+        D1: 28.00
+    };
+    return goldVol[tf] || 2.0;
+}
 
 // ═══════════════════════════════════════════
-// INIT
+// 4. INTEGRATION ΜΕ ΤΟ SCRAPER ΣΟΥ
 // ═══════════════════════════════════════════
-initDB().then(() => {
-  setInterval(getLivePrice, 2000); // Scraping κάθε 2 δευτερόλεπτα
-});
 
-</script>
-</body>
-</html>
+// Αυτή τη συνάρτηση την καλείς από το δικό σου DOM Scraper
+function handleScrapedPrice(price) {
+    if (!price || isNaN(price)) return;
+    
+    // 1. Αποθήκευση στη μόνιμη βάση (IndexedDB)
+    persistTick(price);
+    
+    // 2. Ενημέρωση του UI
+    updatePriceDisplay(price);
+    
+    // 3. Εκτέλεση Ανάλυσης
+    runSMCAnalysis(price);
+}
+
+function updatePriceDisplay(price) {
+    const el = document.getElementById('livePrice');
+    const lastPrice = parseFloat(el.textContent) || 0;
+    
+    el.textContent = price.toFixed(2);
+    el.style.color = price >= lastPrice ? "var(--green)" : "var(--red)";
+    
+    // Tick Flash Effect
+    el.classList.add('flash');
+    setTimeout(() => el.classList.remove('flash'), 200);
+}
