@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XAUUSD · SMC Weapon v55 | Binary Requirements System</title>
+<title>XAUUSD · SMC Weapon v55 | Real-Time Ticks</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -98,7 +98,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </head>
 <body>
 <div class="header">
-  <div><div class="logo">XAUUSD ⚔️</div><div class="logo-sub">SMC WEAPON v55 · BINARY REQ</div></div>
+  <div><div class="logo">XAUUSD ⚔️</div><div class="logo-sub">SMC WEAPON v55 · REAL TICKS</div></div>
   <div class="tv-widget-container">
     <iframe src="https://s.tradingview.com/embed-widget/ticker/?locale=en#%7B%22symbols%22%3A%5B%7B%22proName%22%3A%22FOREXCOM%3AXAUUSD%22%2C%22title%22%3A%22XAUUSD%22%7D%5D%2C%22showSymbolLogo%22%3Atrue%2C%22colorTheme%22%3A%22dark%22%2C%22isTransparent%22%3Atrue%2C%22largeChartUrl%22%3A%22%22%2C%22width%22%3A%22180%22%2C%22height%22%3A%2232%22%2C%22utm_source%22%3A%22smc_weapon%22%2C%22utm_medium%22%3A%22widget%22%2C%22utm_campaign%22%3A%22ticker%22%7D" style="height:32px; width:180px;"></iframe>
   </div>
@@ -120,18 +120,22 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 </div>
 
 <script>
-// --------------------------------------------------------------
-//  PERSISTENT TICK HISTORY (localStorage, 200k max)
-// --------------------------------------------------------------
+// ==================== PERSISTENT TICK HISTORY ====================
 const MAX_TICKS = 200000;
-const STORAGE_KEY = 'xau_smc_ticks_v3';
+const STORAGE_KEY = 'xau_smc_ticks_final';
 window._priceHistory = [];
 window._lastKnownPrice = null;
-window._fullUpdateTimer = null;
 window._lastFullUpdate = 0;
-window._cachedAnalyses = {};
+window._pendingFullUpdate = false;
+window._syntheticCache = {};
 
-function loadTicksFromStorage() {
+function saveTicks() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(window._priceHistory.slice(-MAX_TICKS)));
+  } catch(e) {}
+}
+
+function loadTicks() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -139,81 +143,84 @@ function loadTicksFromStorage() {
       if (Array.isArray(parsed) && parsed.length <= MAX_TICKS && parsed.length > 0) {
         window._priceHistory = parsed;
         window._lastKnownPrice = parsed[parsed.length-1].p;
-        document.getElementById('tickCount').textContent = parsed.length.toLocaleString('el-GR');
+        document.getElementById('tickCount').innerText = parsed.length.toLocaleString('el-GR');
         updateTickPopup();
         return;
       }
     }
-  } catch(e) { console.warn(e); }
-  // seed realistic history around correct XAUUSD price (~4700)
+  } catch(e) {}
+  // seed with 500 ticks around 4700 (OANDA)
   const seedPrice = 4700.00;
   let price = seedPrice;
   const history = [];
-  for (let i=0; i<200; i++) {
-    const t = Date.now() - (200-i)*30000;
-    const trend = i * 0.08;
-    const noise = (Math.random()-0.5)*2.0;
+  for (let i=0; i<500; i++) {
+    const t = Date.now() - (500-i)*10000;
+    const trend = i * 0.05;
+    const noise = (Math.random()-0.5)*1.5;
     price = seedPrice - 12 + trend + noise;
     history.push({ t, p: parseFloat(price.toFixed(2)), src: 'seed' });
   }
   window._priceHistory = history;
   window._lastKnownPrice = history[history.length-1].p;
-  saveTicksToStorage();
-  document.getElementById('tickCount').textContent = history.length.toLocaleString('el-GR');
+  saveTicks();
+  document.getElementById('tickCount').innerText = history.length.toLocaleString('el-GR');
   updateTickPopup();
 }
-function saveTicksToStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(window._priceHistory.slice(-MAX_TICKS)));
-  } catch(e) {}
-}
-function recordTick(price, src='feed') {
+
+function recordTick(price, src) {
   if (!price || isNaN(price) || price <= 0) return false;
   const tick = { t: Date.now(), p: parseFloat(price.toFixed(2)), src };
   window._priceHistory.push(tick);
   if (window._priceHistory.length > MAX_TICKS) window._priceHistory.shift();
   window._lastKnownPrice = price;
-  saveTicksToStorage();
-  document.getElementById('tickCount').textContent = window._priceHistory.length.toLocaleString('el-GR');
+  saveTicks();
+  document.getElementById('tickCount').innerText = window._priceHistory.length.toLocaleString('el-GR');
   updateTickPopup();
   return true;
 }
+
 function updateTickPopup() {
   const listDiv = document.getElementById('tickList');
   if (!listDiv) return;
-  const lastTicks = window._priceHistory.slice(-20).reverse();
-  listDiv.innerHTML = lastTicks.map(t => `${new Date(t.t).toLocaleTimeString()} : ${t.p.toFixed(2)} (${t.src})`).join('<br>');
+  const last = window._priceHistory.slice(-20).reverse();
+  listDiv.innerHTML = last.map(t => `${new Date(t.t).toLocaleTimeString()} : ${t.p.toFixed(2)} (${t.src})`).join('<br>');
 }
-// --------------------------------------------------------------
-//  CANDLE BUILDER (ticks -> OHLC)
-// --------------------------------------------------------------
+
+// ==================== CANDLE GENERATION ====================
 const TF_MS = { M1:60000, M5:300000, M15:900000, M30:1800000, H1:3600000, H4:14400000, D1:86400000 };
-function buildCandles(tf, limit=250) {
+
+function buildCandlesFromTicks(tf, limit=250) {
   const hist = window._priceHistory;
-  if (hist.length < 10) return null;
+  if (hist.length < 20) return null;
   const ms = TF_MS[tf];
   const map = new Map();
   for (const tick of hist) {
     const key = Math.floor(tick.t / ms) * ms;
     if (!map.has(key)) map.set(key, { t: key, o: tick.p, h: tick.p, l: tick.p, c: tick.p, vol: 1 });
-    else { let c = map.get(key); if (tick.p > c.h) c.h = tick.p; if (tick.p < c.l) c.l = tick.p; c.c = tick.p; c.vol++; }
+    else {
+      const c = map.get(key);
+      if (tick.p > c.h) c.h = tick.p;
+      if (tick.p < c.l) c.l = tick.p;
+      c.c = tick.p;
+      c.vol++;
+    }
   }
   return Array.from(map.values()).sort((a,b)=>a.t-b.t).slice(-limit);
 }
-// Synthetic candles with realistic Gold volatility (ATR ~20-30)
-let _syntheticCache = {};
-function getSyntheticCandles(tf, basePrice, limit=180) {
-  const key = `${tf}_${basePrice.toFixed(0)}`;
-  if (_syntheticCache[key] && Date.now() - _syntheticCache[key].timestamp < 30000) {
-    return _syntheticCache[key].candles.slice(-limit);
+
+function getStableSynthetic(tf, basePrice, limit=200) {
+  const key = `${tf}_${Math.floor(basePrice)}`;
+  const now = Date.now();
+  if (window._syntheticCache[key] && now - window._syntheticCache[key].timestamp < 10000) {
+    return window._syntheticCache[key].candles.slice(-limit);
   }
-  const ms = TF_MS[tf] || 300000;
+  const ms = TF_MS[tf];
   const volMap = { M1:1.5, M5:3.2, M15:6.0, M30:10, H1:16, H4:35, D1:68 };
   const vol = volMap[tf] || 12;
   const candles = [];
   let price = basePrice;
   let t = Date.now() - limit * ms;
-  for (let i=0;i<limit;i++) {
+  for (let i=0; i<limit; i++) {
     const change = (Math.random() - 0.48) * vol;
     const o = price, c = price + change;
     const h = Math.max(o,c) + Math.random()*vol*0.7;
@@ -222,149 +229,152 @@ function getSyntheticCandles(tf, basePrice, limit=180) {
     price = c;
     t += ms;
   }
-  _syntheticCache[key] = { candles, timestamp: Date.now() };
+  window._syntheticCache[key] = { candles, timestamp: now };
   return candles.slice(-limit);
 }
+
 function getCandles(tf, limit=200) {
-  const live = buildCandles(tf, limit);
+  const live = buildCandlesFromTicks(tf, limit);
   if (live && live.length >= 30) return live;
-  const base = window._lastKnownPrice || 4700.00;
-  return getSyntheticCandles(tf, base, limit);
+  const base = window._lastKnownPrice || 4700;
+  return getStableSynthetic(tf, base, limit);
 }
-// --------------------------------------------------------------
-//  INDICATORS
-// --------------------------------------------------------------
+
+// ==================== INDICATORS ====================
 function calcATR(candles, period=14) {
-  if (!candles || candles.length<2) return 18.0;
-  let trSum=0;
-  for(let i=1;i<candles.length;i++) {
-    const tr = Math.max(candles[i].h-candles[i].l, Math.abs(candles[i].h-candles[i-1].c), Math.abs(candles[i].l-candles[i-1].c));
-    trSum += tr;
+  if (!candles || candles.length < 2) return 15;
+  let sum = 0;
+  for (let i=1; i<candles.length; i++) {
+    const tr = Math.max(candles[i].h - candles[i].l,
+                        Math.abs(candles[i].h - candles[i-1].c),
+                        Math.abs(candles[i].l - candles[i-1].c));
+    sum += tr;
   }
-  return trSum/(candles.length-1) || 12;
+  return sum / (candles.length-1) || 12;
 }
 function calcEMA(prices, period) {
-  if(prices.length<period) return prices[prices.length-1]||0;
+  if (prices.length < period) return prices[prices.length-1] || 0;
   let ema = prices.slice(0,period).reduce((a,b)=>a+b,0)/period;
-  const k=2/(period+1);
-  for(let i=period;i<prices.length;i++) ema = prices[i]*k + ema*(1-k);
+  const k = 2/(period+1);
+  for (let i=period; i<prices.length; i++) ema = prices[i]*k + ema*(1-k);
   return ema;
 }
 function calcRSI(prices, period=14) {
-  if(prices.length<period+1) return 50;
+  if (prices.length < period+1) return 50;
   let gains=0, losses=0;
-  for(let i=prices.length-period;i<prices.length;i++) {
-    let diff = prices[i]-prices[i-1];
-    if(diff>0) gains+=diff; else losses-=diff;
+  for (let i=prices.length-period; i<prices.length; i++) {
+    const diff = prices[i] - prices[i-1];
+    if (diff>0) gains += diff;
+    else losses -= diff;
   }
-  let rs = gains/(losses||1);
+  const rs = gains/(losses||1);
   return 100 - 100/(1+rs);
 }
-// --------------------------------------------------------------
-//  SMC : ORDER BLOCKS (using FULL range)
-// --------------------------------------------------------------
+
+// ==================== SMC COMPONENTS ====================
 function detectOrderBlocks(candles) {
-  let obs=[];
-  if(candles.length<10) return obs;
-  for(let i=3;i<candles.length-1;i++) {
-    const prev=candles[i-1], curr=candles[i], nxt=candles[i+1];
-    const atr=calcATR(candles.slice(Math.max(0,i-12),i+2));
+  const obs = [];
+  if (candles.length < 10) return obs;
+  for (let i=3; i<candles.length-1; i++) {
+    const prev = candles[i-1], nxt = candles[i+1];
+    const atr = calcATR(candles.slice(Math.max(0,i-12), i+2));
     // Bullish OB
-    if(prev.c < prev.o && nxt.c > nxt.o && (nxt.c-nxt.o) > (nxt.h-nxt.l)*0.55 && nxt.c > prev.h + (nxt.h-nxt.l)*0.2) {
-      let strength = Math.min(100, Math.round(((nxt.c - prev.l)/atr)*38));
-      if(strength>35) obs.push({ type:'BULL', top: prev.h, bottom: prev.l, mid: (prev.h+prev.l)/2, strength });
+    if (prev.c < prev.o && nxt.c > nxt.o && (nxt.c-nxt.o) > (nxt.h-nxt.l)*0.55 && nxt.c > prev.h + (nxt.h-nxt.l)*0.2) {
+      const strength = Math.min(100, Math.round(((nxt.c - prev.l)/atr)*38));
+      if (strength>35) obs.push({ type:'BULL', top:prev.h, bottom:prev.l, mid:(prev.h+prev.l)/2, strength });
     }
     // Bearish OB
-    if(prev.c > prev.o && nxt.c < nxt.o && (nxt.o-nxt.c) > (nxt.h-nxt.l)*0.55 && nxt.c < prev.l - (nxt.h-nxt.l)*0.2) {
-      let strength = Math.min(100, Math.round(((prev.h - nxt.c)/atr)*38));
-      if(strength>35) obs.push({ type:'BEAR', top: prev.h, bottom: prev.l, mid: (prev.h+prev.l)/2, strength });
+    if (prev.c > prev.o && nxt.c < nxt.o && (nxt.o-nxt.c) > (nxt.h-nxt.l)*0.55 && nxt.c < prev.l - (nxt.h-nxt.l)*0.2) {
+      const strength = Math.min(100, Math.round(((prev.h - nxt.c)/atr)*38));
+      if (strength>35) obs.push({ type:'BEAR', top:prev.h, bottom:prev.l, mid:(prev.h+prev.l)/2, strength });
     }
   }
   return obs.slice(-6);
 }
-// --------------------------------------------------------------
-//  FVG DETECTION
-// --------------------------------------------------------------
+
 function detectFVGs(candles) {
-  let fvgs=[];
-  if(candles.length<5) return fvgs;
-  for(let i=2;i<candles.length-1;i++) {
-    const c0=candles[i-2], c1=candles[i-1], c2=candles[i];
-    const atr=calcATR(candles.slice(Math.max(0,i-10),i+2));
-    if(c2.l > c0.h) { let gap=c2.l-c0.h; if(gap>=atr*0.2) fvgs.push({ type:'BULL', top:c2.l, bottom:c0.h, mid:(c2.l+c0.h)/2, gapPct:Math.round(gap/atr*100), filled:false }); }
-    if(c0.l > c2.h) { let gap=c0.l-c2.h; if(gap>=atr*0.2) fvgs.push({ type:'BEAR', top:c0.l, bottom:c2.h, mid:(c0.l+c2.h)/2, gapPct:Math.round(gap/atr*100), filled:false }); }
+  const fvgs = [];
+  if (candles.length < 5) return fvgs;
+  for (let i=2; i<candles.length-1; i++) {
+    const c0 = candles[i-2], c2 = candles[i];
+    const atr = calcATR(candles.slice(Math.max(0,i-10), i+2));
+    if (c2.l > c0.h) {
+      const gap = c2.l - c0.h;
+      if (gap >= atr*0.2) fvgs.push({ type:'BULL', top:c2.l, bottom:c0.h, mid:(c2.l+c0.h)/2, gapPct:Math.round(gap/atr*100), filled:false });
+    }
+    if (c0.l > c2.h) {
+      const gap = c0.l - c2.h;
+      if (gap >= atr*0.2) fvgs.push({ type:'BEAR', top:c0.l, bottom:c2.h, mid:(c0.l+c2.h)/2, gapPct:Math.round(gap/atr*100), filled:false });
+    }
   }
-  const price=candles[candles.length-1].c;
-  return fvgs.slice(-6).map(f=>({...f, filled: (f.type==='BULL'? price<f.bottom : price>f.top)}));
+  const price = candles[candles.length-1].c;
+  return fvgs.slice(-6).map(f => ({ ...f, filled: (f.type==='BULL' ? price<f.bottom : price>f.top) }));
 }
-// --------------------------------------------------------------
-//  STRUCTURE (BOS/CHoCH)
-// --------------------------------------------------------------
+
 function detectStructure(candles) {
-  if(candles.length<25) return { bos:'NONE', trend:'NEUTRAL', strength:0 };
-  const look=Math.min(18,Math.floor(candles.length/3));
-  const prevHigh=Math.max(...candles.slice(-look*2,-look).map(c=>c.h));
-  const prevLow=Math.min(...candles.slice(-look*2,-look).map(c=>c.l));
-  const curHigh=Math.max(...candles.slice(-look).map(c=>c.h));
-  const curLow=Math.min(...candles.slice(-look).map(c=>c.l));
-  const price=candles[candles.length-1].c;
-  const atr=calcATR(candles);
+  if (candles.length < 25) return { bos:'NONE', trend:'NEUTRAL', strength:0 };
+  const look = Math.min(18, Math.floor(candles.length/3));
+  const prevHigh = Math.max(...candles.slice(-look*2,-look).map(c=>c.h));
+  const prevLow  = Math.min(...candles.slice(-look*2,-look).map(c=>c.l));
+  const curHigh  = Math.max(...candles.slice(-look).map(c=>c.h));
+  const curLow   = Math.min(...candles.slice(-look).map(c=>c.l));
+  const price = candles[candles.length-1].c;
+  const atr = calcATR(candles);
   let bos='NONE', trend='NEUTRAL', strength=0;
-  if(curHigh>prevHigh && curLow>prevLow) { bos='BOS BULL'; trend='BULLISH'; strength=Math.min(100,((curHigh-prevHigh)/atr)*45); }
-  else if(curHigh<prevHigh && curLow<prevLow) { bos='BOS BEAR'; trend='BEARISH'; strength=Math.min(100,((prevLow-curLow)/atr)*45); }
-  else if(price>prevHigh) { bos='BREAKOUT'; trend='BULLISH'; strength=Math.min(100,((price-prevHigh)/atr)*40); }
-  else if(price<prevLow) { bos='BREAKDOWN'; trend='BEARISH'; strength=Math.min(100,((prevLow-price)/atr)*40); }
-  else if(curHigh<prevHigh && curLow>prevLow) bos='CHoCH';
-  return { bos, trend, strength, prevHigh, prevLow };
+  if (curHigh>prevHigh && curLow>prevLow) { bos='BOS BULL'; trend='BULLISH'; strength=Math.min(100,((curHigh-prevHigh)/atr)*45); }
+  else if (curHigh<prevHigh && curLow<prevLow) { bos='BOS BEAR'; trend='BEARISH'; strength=Math.min(100,((prevLow-curLow)/atr)*45); }
+  else if (price>prevHigh) { bos='BREAKOUT'; trend='BULLISH'; strength=Math.min(100,((price-prevHigh)/atr)*40); }
+  else if (price<prevLow) { bos='BREAKDOWN'; trend='BEARISH'; strength=Math.min(100,((prevLow-price)/atr)*40); }
+  else if (curHigh<prevHigh && curLow>prevLow) bos='CHoCH';
+  return { bos, trend, strength };
 }
-// --------------------------------------------------------------
-//  FRACTAL PATTERN SIMILARITY
-// --------------------------------------------------------------
-function normalizePattern(arr) { let min=Math.min(...arr), max=Math.max(...arr), rng=max-min||1; return arr.map(v=>(v-min)/rng); }
-function patternSimilarity(a,b) { let s=0; for(let i=0;i<a.length;i++) s+=Math.pow(a[i]-b[i],2); return Math.max(0,1-Math.sqrt(s/a.length)); }
+
 function fractalPatternAnalysis(candles, patternLen=12, lookback=180) {
-  if(candles.length<patternLen+15) return { similarity:0, direction:'NEUTRAL', target:null, confidence:0, matches:0 };
-  const closes=candles.map(c=>c.c);
-  const recent=closes.slice(-patternLen);
-  const recentNorm=normalizePattern(recent);
-  const atr=calcATR(candles);
-  const range=Math.max(...recent)-Math.min(...recent);
-  if(range/atr<0.35) return { similarity:0, direction:'NEUTRAL', target:null, confidence:0, matches:0 };
-  let matches=[];
-  const startIdx=Math.max(0, closes.length-patternLen-lookback);
-  for(let i=startIdx; i<closes.length-patternLen*1.5; i++) {
-    const seg=closes.slice(i,i+patternLen);
-    const sim=patternSimilarity(recentNorm, normalizePattern(seg));
-    if(sim>0.70) {
-      const after=closes.slice(i+patternLen, i+patternLen+Math.floor(patternLen/2));
-      if(after.length>0) {
-        const move=after[after.length-1]-closes[i+patternLen-1];
-        if(Math.abs(move)>atr*0.25) matches.push({sim, move});
+  if (candles.length < patternLen+15) return { similarity:0, direction:'NEUTRAL', target:null, confidence:0, matches:0 };
+  const closes = candles.map(c=>c.c);
+  const recent = closes.slice(-patternLen);
+  const minR = Math.min(...recent), maxR = Math.max(...recent), rngR = maxR-minR || 1;
+  const recentNorm = recent.map(v=>(v-minR)/rngR);
+  const atr = calcATR(candles);
+  if ((maxR-minR)/atr < 0.35) return { similarity:0, direction:'NEUTRAL', target:null, confidence:0, matches:0 };
+  const matches = [];
+  const start = Math.max(0, closes.length-patternLen-lookback);
+  for (let i=start; i<closes.length-patternLen*1.5; i++) {
+    const seg = closes.slice(i, i+patternLen);
+    const minS = Math.min(...seg), maxS = Math.max(...seg), rngS = maxS-minS || 1;
+    const segNorm = seg.map(v=>(v-minS)/rngS);
+    let sim = 0;
+    for (let k=0; k<patternLen; k++) sim += Math.pow(recentNorm[k] - segNorm[k], 2);
+    sim = Math.max(0, 1 - Math.sqrt(sim/patternLen));
+    if (sim > 0.70) {
+      const after = closes.slice(i+patternLen, i+patternLen+Math.floor(patternLen/2));
+      if (after.length) {
+        const move = after[after.length-1] - closes[i+patternLen-1];
+        if (Math.abs(move) > atr*0.25) matches.push({sim, move});
       }
     }
   }
-  if(matches.length===0) return { similarity:0, direction:'NEUTRAL', target:null, confidence:0, matches:0 };
-  const avgSim=matches.reduce((a,m)=>a+m.sim,0)/matches.length;
-  const weightedMove=matches.reduce((a,m)=>a+m.move*m.sim,0)/matches.reduce((a,m)=>a+m.sim,0);
-  const bullCount=matches.filter(m=>m.move>0).length, bearCount=matches.filter(m=>m.move<0).length;
-  const direction=bullCount>bearCount*1.4?'BULL':bearCount>bullCount*1.4?'BEAR':'NEUTRAL';
-  const target=parseFloat((candles[candles.length-1].c + weightedMove).toFixed(2));
+  if (!matches.length) return { similarity:0, direction:'NEUTRAL', target:null, confidence:0, matches:0 };
+  const avgSim = matches.reduce((s,m)=>s+m.sim,0)/matches.length;
+  const weightedMove = matches.reduce((s,m)=>s+m.move*m.sim,0) / matches.reduce((s,m)=>s+m.sim,0);
+  const bull = matches.filter(m=>m.move>0).length, bear = matches.filter(m=>m.move<0).length;
+  const direction = bull > bear*1.4 ? 'BULL' : bear > bull*1.4 ? 'BEAR' : 'NEUTRAL';
+  const target = parseFloat((candles[candles.length-1].c + weightedMove).toFixed(2));
   return { similarity:Math.round(avgSim*100), direction, target, confidence:Math.round(avgSim*Math.min(100,matches.length*25)), matches:matches.length };
 }
-// --------------------------------------------------------------
-//  BINARY REQUIREMENTS (STRUCTURE MANDATORY + 3 of other 4)
-// --------------------------------------------------------------
+
+// ==================== BINARY REQUIREMENTS ====================
 function checkOBReq(price, obs, side, atr) {
-  const prox=atr*0.32;
-  const targetType=side==='BUY'?'BULL':'BEAR';
-  const valid=obs.find(o=>o.type===targetType && Math.abs(price-o.mid)<=prox && o.strength>=40);
-  return { met:!!valid, details:valid?`${targetType} OB @ ${valid.mid.toFixed(2)} (str${valid.strength})`:'No valid OB nearby' };
+  const prox = atr*0.32;
+  const type = side==='BUY'?'BULL':'BEAR';
+  const valid = obs.find(o=>o.type===type && Math.abs(price-o.mid)<=prox && o.strength>=40);
+  return { met:!!valid, details:valid?`${type} OB @ ${valid.mid.toFixed(2)} (str${valid.strength})`:'No valid OB nearby' };
 }
 function checkFVGReq(price, fvgs, side, atr) {
-  const targetType=side==='BUY'?'BULL':'BEAR';
-  const prox=atr*0.4;
-  const valid=fvgs.find(f=>f.type===targetType && !f.filled && f.gapPct>=22 && Math.abs(price-f.mid)<=prox);
-  return { met:!!valid, details:valid?`${targetType} FVG ${valid.gapPct}% ATR`:'No active FVG' };
+  const type = side==='BUY'?'BULL':'BEAR';
+  const prox = atr*0.4;
+  const valid = fvgs.find(f=>f.type===type && !f.filled && f.gapPct>=22 && Math.abs(price-f.mid)<=prox);
+  return { met:!!valid, details:valid?`${type} FVG ${valid.gapPct}% ATR`:'No active FVG' };
 }
 function checkStructureReq(struct, side) {
   const met = (side==='BUY' && (struct.trend==='BULLISH' || struct.bos==='BREAKOUT') && struct.strength>=30) ||
@@ -372,104 +382,194 @@ function checkStructureReq(struct, side) {
   return { met, details:`${struct.bos} (${Math.round(struct.strength)}%)` };
 }
 function checkFractalReq(fractal, side, minConf=55) {
-  const dirMatch=(side==='BUY' && fractal.direction==='BULL') || (side==='SELL' && fractal.direction==='BEAR');
-  const met= dirMatch && fractal.matches>=2 && fractal.confidence>=minConf && fractal.similarity>=68;
+  const dirMatch = (side==='BUY' && fractal.direction==='BULL') || (side==='SELL' && fractal.direction==='BEAR');
+  const met = dirMatch && fractal.matches>=2 && fractal.confidence>=minConf && fractal.similarity>=68;
   return { met, details:`${fractal.direction||'NEUTRAL'} ${fractal.similarity}% sim · ${fractal.matches} matches` };
 }
 function checkMomentumReq(candles, side) {
-  const closes=candles.map(c=>c.c);
-  const rsi=calcRSI(closes,14);
-  const ema21=calcEMA(closes,21);
-  const ema50=calcEMA(closes,50);
-  const price=closes[closes.length-1];
-  if(side==='BUY') return { met: rsi>=38 && rsi<=72 && price>ema21 && ema21>ema50, details:`RSI ${rsi.toFixed(1)} | EMA21>50` };
+  const closes = candles.map(c=>c.c);
+  const rsi = calcRSI(closes,14);
+  const ema21 = calcEMA(closes,21);
+  const ema50 = calcEMA(closes,50);
+  const price = closes[closes.length-1];
+  if (side==='BUY') return { met: rsi>=38 && rsi<=72 && price>ema21 && ema21>ema50, details:`RSI ${rsi.toFixed(1)} | EMA21>50` };
   else return { met: rsi<=62 && rsi>=28 && price<ema21 && ema21<ema50, details:`RSI ${rsi.toFixed(1)} | bearish alignment` };
 }
 function finalDecision(price, obs, fvgs, struct, fractal, candles, atr) {
-  const buyReqs={ ob:checkOBReq(price,obs,'BUY',atr), fvg:checkFVGReq(price,fvgs,'BUY',atr), struct:checkStructureReq(struct,'BUY'), fractal:checkFractalReq(fractal,'BUY'), mom:checkMomentumReq(candles,'BUY') };
-  const sellReqs={ ob:checkOBReq(price,obs,'SELL',atr), fvg:checkFVGReq(price,fvgs,'SELL',atr), struct:checkStructureReq(struct,'SELL'), fractal:checkFractalReq(fractal,'SELL'), mom:checkMomentumReq(candles,'SELL') };
-  let direction='WAIT', checks=null, conf=0;
-  if(buyReqs.struct.met) {
-    let otherCount = [buyReqs.ob, buyReqs.fvg, buyReqs.fractal, buyReqs.mom].filter(r=>r.met).length;
-    if(otherCount >= 3) { direction='BUY'; checks=buyReqs; conf=Math.min(100, 65 + otherCount*8); }
+  const buyReqs = {
+    ob: checkOBReq(price,obs,'BUY',atr),
+    fvg: checkFVGReq(price,fvgs,'BUY',atr),
+    struct: checkStructureReq(struct,'BUY'),
+    fractal: checkFractalReq(fractal,'BUY'),
+    mom: checkMomentumReq(candles,'BUY')
+  };
+  const sellReqs = {
+    ob: checkOBReq(price,obs,'SELL',atr),
+    fvg: checkFVGReq(price,fvgs,'SELL',atr),
+    struct: checkStructureReq(struct,'SELL'),
+    fractal: checkFractalReq(fractal,'SELL'),
+    mom: checkMomentumReq(candles,'SELL')
+  };
+  let direction = 'WAIT', checks = null, conf = 0;
+  if (buyReqs.struct.met) {
+    const other = [buyReqs.ob, buyReqs.fvg, buyReqs.fractal, buyReqs.mom].filter(r=>r.met).length;
+    if (other >= 3) { direction = 'BUY'; checks = buyReqs; conf = Math.min(100, 65 + other*8); }
   }
-  if(sellReqs.struct.met && direction==='WAIT') {
-    let otherCount = [sellReqs.ob, sellReqs.fvg, sellReqs.fractal, sellReqs.mom].filter(r=>r.met).length;
-    if(otherCount >= 3) { direction='SELL'; checks=sellReqs; conf=Math.min(100, 65 + otherCount*8); }
+  if (sellReqs.struct.met && direction === 'WAIT') {
+    const other = [sellReqs.ob, sellReqs.fvg, sellReqs.fractal, sellReqs.mom].filter(r=>r.met).length;
+    if (other >= 3) { direction = 'SELL'; checks = sellReqs; conf = Math.min(100, 65 + other*8); }
   }
-  if(direction==='WAIT') checks = buyReqs.struct.met ? buyReqs : sellReqs;
+  if (direction === 'WAIT') checks = buyReqs.struct.met ? buyReqs : sellReqs;
   const buyScore = buyReqs.struct.met ? 1 + [buyReqs.ob,buyReqs.fvg,buyReqs.fractal,buyReqs.mom].filter(r=>r.met).length : 0;
   const sellScore = sellReqs.struct.met ? 1 + [sellReqs.ob,sellReqs.fvg,sellReqs.fractal,sellReqs.mom].filter(r=>r.met).length : 0;
   return { direction, confidence:conf, checks, buyScore, sellScore };
 }
 function calcTargets(price, atr, tf, direction, obs, fractal) {
-  const mul={M1:1.5,M5:2.0,M15:2.8,M30:3.5,H1:4.5,H4:6.2,D1:10.5};
-  const tpMul=mul[tf]||2.5, slMul=1.6;
+  const mul = {M1:1.5,M5:2.0,M15:2.8,M30:3.5,H1:4.5,H4:6.2,D1:10.5};
+  const tpMul = mul[tf]||2.5, slMul=1.6;
   let tp, sl;
-  if(direction==='BUY') { sl=price-atr*slMul; tp=price+atr*tpMul; const nearestBear=obs.filter(o=>o.type==='BEAR'&&o.bottom>price).sort((a,b)=>a.bottom-b.bottom)[0]; if(nearestBear && nearestBear.bottom<tp && nearestBear.bottom>price+atr*0.7) tp=nearestBear.bottom; if(fractal.target && fractal.direction==='BULL' && fractal.target>price) tp=Math.min(tp,fractal.target); }
-  else { sl=price+atr*slMul; tp=price-atr*tpMul; const nearestBull=obs.filter(o=>o.type==='BULL'&&o.top<price).sort((a,b)=>b.top-a.top)[0]; if(nearestBull && nearestBull.top>tp && nearestBull.top<price-atr*0.7) tp=nearestBull.top; if(fractal.target && fractal.direction==='BEAR' && fractal.target<price) tp=Math.max(tp,fractal.target); }
-  tp=parseFloat(tp.toFixed(2)); sl=parseFloat(sl.toFixed(2)); let rr=Math.abs(tp-price)/Math.abs(sl-price);
+  if (direction==='BUY') {
+    sl = price - atr*slMul;
+    tp = price + atr*tpMul;
+    const bearOB = obs.filter(o=>o.type==='BEAR'&&o.bottom>price).sort((a,b)=>a.bottom-b.bottom)[0];
+    if (bearOB && bearOB.bottom < tp && bearOB.bottom > price+atr*0.7) tp = bearOB.bottom;
+    if (fractal.target && fractal.direction==='BULL' && fractal.target>price) tp = Math.min(tp, fractal.target);
+  } else {
+    sl = price + atr*slMul;
+    tp = price - atr*tpMul;
+    const bullOB = obs.filter(o=>o.type==='BULL'&&o.top<price).sort((a,b)=>b.top-a.top)[0];
+    if (bullOB && bullOB.top > tp && bullOB.top < price-atr*0.7) tp = bullOB.top;
+    if (fractal.target && fractal.direction==='BEAR' && fractal.target<price) tp = Math.max(tp, fractal.target);
+  }
+  tp = parseFloat(tp.toFixed(2)); sl = parseFloat(sl.toFixed(2));
+  const rr = Math.abs(tp-price)/Math.abs(sl-price);
   return { tp, sl, rr:parseFloat(rr.toFixed(2)) };
 }
-// --------------------------------------------------------------
-//  ANALYSE ONE TIMEFRAME
-// --------------------------------------------------------------
+
+// ==================== ANALYSE TIMEFRAME ====================
+const TFS = ['M1','M5','M15','M30','H1','H4','D1'];
+const TF_LABEL = {M1:'1MIN',M5:'5MIN',M15:'15MIN',M30:'30MIN',H1:'1H',H4:'4H',D1:'DAY'};
+
 function analyseTF(tf) {
   try {
-    let candles=getCandles(tf, 260);
-    if(!candles||candles.length<30) return null;
-    const price=candles[candles.length-1].c;
-    const atr=calcATR(candles);
-    const obs=detectOrderBlocks(candles);
-    const fvgs=detectFVGs(candles);
-    const struct=detectStructure(candles);
-    const fractal=fractalPatternAnalysis(candles, 12, 200);
-    const decision=finalDecision(price,obs,fvgs,struct,fractal,candles,atr);
-    const targets=calcTargets(price,atr,tf,decision.direction,obs,fractal);
-    const closes=candles.map(c=>c.c);
-    return { tf, price, atr, obs, fvgs, struct, fractal, decision, targets, candles:candles.slice(-18), rsi:calcRSI(closes), nearBullOB:obs.find(o=>o.type==='BULL'), nearBearOB:obs.find(o=>o.type==='BEAR'), nearBullFVG:fvgs.find(f=>f.type==='BULL'&&!f.filled), nearBearFVG:fvgs.find(f=>f.type==='BEAR'&&!f.filled) };
-  } catch(e) { console.warn(tf,e); return null; }
+    const candles = getCandles(tf, 260);
+    if (!candles || candles.length < 30) return null;
+    const price = candles[candles.length-1].c;
+    const atr = calcATR(candles);
+    const obs = detectOrderBlocks(candles);
+    const fvgs = detectFVGs(candles);
+    const struct = detectStructure(candles);
+    const fractal = fractalPatternAnalysis(candles, 12, 200);
+    const decision = finalDecision(price, obs, fvgs, struct, fractal, candles, atr);
+    const targets = calcTargets(price, atr, tf, decision.direction, obs, fractal);
+    const closes = candles.map(c=>c.c);
+    return {
+      tf, price, atr, obs, fvgs, struct, fractal, decision, targets,
+      candles: candles.slice(-18), rsi: calcRSI(closes),
+      nearBullOB: obs.find(o=>o.type==='BULL'),
+      nearBearOB: obs.find(o=>o.type==='BEAR'),
+      nearBullFVG: fvgs.find(f=>f.type==='BULL' && !f.filled),
+      nearBearFVG: fvgs.find(f=>f.type==='BEAR' && !f.filled)
+    };
+  } catch(e) { console.warn(tf, e); return null; }
 }
-// --------------------------------------------------------------
-//  RENDER ENGINE (throttled)
-// --------------------------------------------------------------
-const TFS=['M1','M5','M15','M30','H1','H4','D1'];
-const TF_LABEL={M1:'1MIN',M5:'5MIN',M15:'15MIN',M30:'30MIN',H1:'1H',H4:'4H',D1:'DAY'};
-function miniCandleViz(candles){
-  if(!candles||!candles.length) return '';
-  let maxH=Math.max(...candles.map(c=>c.h)), minL=Math.min(...candles.map(c=>c.l)), rng=maxH-minL||1;
-  return candles.map(c=>{ let isBull=c.c>=c.o, col=isBull?'var(--green)':'var(--red)'; let bodyH=Math.max(2,Math.round(Math.abs(c.c-c.o)/rng*36)); return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:48px;flex:1;"><div style="width:1px;height:${Math.round((c.h-Math.max(c.o,c.c))/rng*48)}px;background:${col};"></div><div style="width:5px;height:${bodyH}px;background:${col};border-radius:1px;"></div><div style="width:1px;height:${Math.round((Math.min(c.o,c.c)-c.l)/rng*48)}px;background:${col};"></div></div>`; }).join('');
-}
-function fmt(p){ return p?p.toFixed(2):'—'; }
-function renderOverview(analyses){
-  document.getElementById('overviewRow').innerHTML=analyses.map(a=>{
-    if(!a) return '';
-    let col=a.decision.direction==='BUY'?'var(--green)':a.decision.direction==='SELL'?'var(--red)':'var(--muted2)';
-    let score=a.decision.direction==='BUY'?a.decision.buyScore:a.decision.direction==='SELL'?a.decision.sellScore:0;
-    return `<div class="ov-card"><div class="ov-tf" style="color:${col}">${TF_LABEL[a.tf]}</div><div class="ov-sig" style="color:${col}">${a.decision.direction}</div><div class="ov-conf">Req ${score}/5</div><div class="ov-bar"><div class="ov-bar-fill" style="width:${a.decision.confidence}%;background:${col}"></div></div></div>`;
+
+// ==================== RENDER (throttled) ====================
+function miniCandleViz(candles) {
+  if (!candles || !candles.length) return '';
+  const maxH = Math.max(...candles.map(c=>c.h)), minL = Math.min(...candles.map(c=>c.l)), rng = maxH-minL||1;
+  return candles.map(c => {
+    const isBull = c.c >= c.o;
+    const col = isBull ? 'var(--green)' : 'var(--red)';
+    const bodyH = Math.max(2, Math.round(Math.abs(c.c-c.o)/rng*36));
+    const upperWick = Math.round((c.h - Math.max(c.o,c.c))/rng*48);
+    const lowerWick = Math.round((Math.min(c.o,c.c) - c.l)/rng*48);
+    return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:48px;flex:1;">
+      <div style="width:1px;height:${upperWick}px;background:${col};"></div>
+      <div style="width:5px;height:${bodyH}px;background:${col};border-radius:1px;"></div>
+      <div style="width:1px;height:${lowerWick}px;background:${col};"></div>
+    </div>`;
   }).join('');
 }
-function renderReqList(checks){
-  const items=[{key:'ob',label:'Order Block'},{key:'fvg',label:'Fair Value Gap'},{key:'struct',label:'Structure'},{key:'fractal',label:'Fractal'},{key:'mom',label:'Momentum'}];
-  return items.map(it=>{ let ck=checks[it.key]; let status=ck?.met?'pass':'fail'; let icon=ck?.met?'✓':'✗'; return `<div class="req-item"><div class="req-check ${status}">${icon}</div><span style="color:${ck?.met?'var(--green)':'var(--red)'}">${it.label}</span><span style="margin-left:auto;color:var(--muted2);font-size:9px">${ck?.details||'N/A'}</span></div>`; }).join('');
+function fmt(p) { return p ? p.toFixed(2) : '—'; }
+function renderOverview(analyses) {
+  const row = document.getElementById('overviewRow');
+  row.innerHTML = analyses.map(a => {
+    if (!a) return '';
+    const col = a.decision.direction==='BUY' ? 'var(--green)' : a.decision.direction==='SELL' ? 'var(--red)' : 'var(--muted2)';
+    const score = a.decision.direction==='BUY' ? a.decision.buyScore : a.decision.direction==='SELL' ? a.decision.sellScore : 0;
+    return `<div class="ov-card">
+      <div class="ov-tf" style="color:${col}">${TF_LABEL[a.tf]}</div>
+      <div class="ov-sig" style="color:${col}">${a.decision.direction}</div>
+      <div class="ov-conf">Req ${score}/5</div>
+      <div class="ov-bar"><div class="ov-bar-fill" style="width:${a.decision.confidence}%;background:${col}"></div></div>
+    </div>`;
+  }).join('');
 }
-function renderTFBlock(a){
-  if(!a) return '';
-  const isBull=a.decision.direction==='BUY', isSell=a.decision.direction==='SELL', isWait=!isBull&&!isSell;
-  const col=isBull?'var(--green)':isSell?'var(--red)':'var(--muted2)';
-  const checks=a.decision.checks||{};
-  return `<div class="tf-block"><div class="tf-header"><div><div class="tf-name" style="color:${col}">${a.tf} · ${TF_LABEL[a.tf]}</div><div style="font-size:9px;color:var(--muted2)">${a.struct.bos} | RSI ${a.rsi.toFixed(1)} | ATR ${a.atr.toFixed(2)}</div></div><div class="tf-signal-badge" style="background:${col}10;color:${col}">${a.decision.direction}</div></div><div class="tf-body"><div class="mini-chart">${miniCandleViz(a.candles)}</div><div class="req-list"><div style="font-family:'Share Tech Mono';font-size:8px;color:var(--gold);margin-bottom:6px;">✅ BINARY REQUIREMENTS (STRUCTURE + 3/4)</div>${renderReqList(checks)}</div><div class="smc-row"><div class="smc-box ${a.nearBullOB?'ob-bull':'fractal-box'}"><div class="smc-box-label">BULL OB</div>${a.nearBullOB?`<div class="smc-box-val" style="color:var(--green)">${fmt(a.nearBullOB.mid)}</div><div class="smc-box-sub">str ${a.nearBullOB.strength}</div>`:'<div>—</div>'}</div><div class="smc-box ${a.nearBearOB?'ob-bear':'fractal-box'}"><div class="smc-box-label">BEAR OB</div>${a.nearBearOB?`<div class="smc-box-val" style="color:var(--red)">${fmt(a.nearBearOB.mid)}</div><div class="smc-box-sub">str ${a.nearBearOB.strength}</div>`:'<div>—</div>'}</div><div class="smc-box ${isBull?'fvg-bull':'fvg-bear'}"><div class="smc-box-label">FVG ACTIVE</div>${(isBull&&a.nearBullFVG)?`<div class="smc-box-val" style="color:var(--blue)">${fmt(a.nearBullFVG.mid)}</div><div class="smc-box-sub">${a.nearBullFVG.gapPct}% ATR</div>`:(!isBull&&a.nearBearFVG)?`<div class="smc-box-val" style="color:var(--purple)">${fmt(a.nearBearFVG.mid)}</div><div class="smc-box-sub">${a.nearBearFVG.gapPct}% ATR</div>`:'<div>—</div>'}</div></div><div style="padding:10px;background:rgba(245,200,66,0.04);border-radius:5px;"><div style="display:flex;justify-content:space-between;"><span class="tag tag-gold">FRACTAL</span><span>${a.fractal.similarity}% sim</span></div><div class="frac-sim-bar"><div class="frac-sim-track"><div class="frac-sim-fill" style="width:${a.fractal.similarity}%"></div></div><div class="frac-sim-label">${a.fractal.matches} matches</div></div><div style="margin-top:4px;font-size:9px;color:var(--muted2)">Dir: ${a.fractal.direction} | conf ${a.fractal.confidence}%</div></div><div class="final-dec" style="background:${col}08;border-color:${col}40;"><div><div class="final-label">SIGNAL</div><div class="final-signal" style="color:${col}">${a.decision.direction}</div></div><div class="final-sep"></div><div><div class="final-label">ENTRY</div><div class="final-price" style="color:var(--gold)">${fmt(a.price)}</div></div><div class="final-sep"></div><div><div class="final-label">TP</div><div class="final-price" style="color:var(--green)">${fmt(a.targets.tp)}</div></div><div class="final-sep"></div><div><div class="final-label">SL</div><div class="final-price" style="color:var(--red)">${fmt(a.targets.sl)}</div></div><div class="final-sep"></div><div><div class="final-label">R:R</div><div class="final-price">1:${a.targets.rr}</div><div style="font-size:9px;color:var(--muted2)">${a.decision.confidence}%</div></div></div></div></div>`;
+function renderReqList(checks) {
+  const items = [
+    {key:'ob', label:'Order Block'},
+    {key:'fvg', label:'Fair Value Gap'},
+    {key:'struct', label:'Structure'},
+    {key:'fractal', label:'Fractal'},
+    {key:'mom', label:'Momentum'}
+  ];
+  return items.map(it => {
+    const ck = checks[it.key];
+    const status = ck?.met ? 'pass' : 'fail';
+    const icon = ck?.met ? '✓' : '✗';
+    return `<div class="req-item">
+      <div class="req-check ${status}">${icon}</div>
+      <span style="color:${ck?.met?'var(--green)':'var(--red)'}">${it.label}</span>
+      <span style="margin-left:auto;color:var(--muted2);font-size:9px">${ck?.details||'N/A'}</span>
+    </div>`;
+  }).join('');
 }
-// --------------------------------------------------------------
-//  PRICE FEED (Yahoo + throttled full update)
-// --------------------------------------------------------------
-let _pendingFullUpdate = false;
-function fullUpdate() {
+function renderTFBlock(a) {
+  if (!a) return '';
+  const isBull = a.decision.direction==='BUY', isSell = a.decision.direction==='SELL';
+  const col = isBull ? 'var(--green)' : isSell ? 'var(--red)' : 'var(--muted2)';
+  const checks = a.decision.checks || {};
+  return `<div class="tf-block">
+    <div class="tf-header">
+      <div><div class="tf-name" style="color:${col}">${a.tf} · ${TF_LABEL[a.tf]}</div>
+      <div style="font-size:9px;color:var(--muted2)">${a.struct.bos} | RSI ${a.rsi.toFixed(1)} | ATR ${a.atr.toFixed(2)}</div></div>
+      <div class="tf-signal-badge" style="background:${col}10;color:${col}">${a.decision.direction}</div>
+    </div>
+    <div class="tf-body">
+      <div class="mini-chart">${miniCandleViz(a.candles)}</div>
+      <div class="req-list"><div style="font-family:'Share Tech Mono';font-size:8px;color:var(--gold);margin-bottom:6px;">✅ BINARY REQUIREMENTS (STRUCTURE + 3/4)</div>${renderReqList(checks)}</div>
+      <div class="smc-row">
+        <div class="smc-box ${a.nearBullOB?'ob-bull':'fractal-box'}"><div class="smc-box-label">BULL OB</div>${a.nearBullOB?`<div class="smc-box-val" style="color:var(--green)">${fmt(a.nearBullOB.mid)}</div><div class="smc-box-sub">str ${a.nearBullOB.strength}</div>`:'<div>—</div>'}</div>
+        <div class="smc-box ${a.nearBearOB?'ob-bear':'fractal-box'}"><div class="smc-box-label">BEAR OB</div>${a.nearBearOB?`<div class="smc-box-val" style="color:var(--red)">${fmt(a.nearBearOB.mid)}</div><div class="smc-box-sub">str ${a.nearBearOB.strength}</div>`:'<div>—</div>'}</div>
+        <div class="smc-box ${isBull?'fvg-bull':'fvg-bear'}"><div class="smc-box-label">FVG ACTIVE</div>${(isBull&&a.nearBullFVG)?`<div class="smc-box-val" style="color:var(--blue)">${fmt(a.nearBullFVG.mid)}</div><div class="smc-box-sub">${a.nearBullFVG.gapPct}% ATR</div>`:(!isBull&&a.nearBearFVG)?`<div class="smc-box-val" style="color:var(--purple)">${fmt(a.nearBearFVG.mid)}</div><div class="smc-box-sub">${a.nearBearFVG.gapPct}% ATR</div>`:'<div>—</div>'}</div>
+      </div>
+      <div style="padding:10px;background:rgba(245,200,66,0.04);border-radius:5px;">
+        <div style="display:flex;justify-content:space-between;"><span class="tag tag-gold">FRACTAL</span><span>${a.fractal.similarity}% sim</span></div>
+        <div class="frac-sim-bar"><div class="frac-sim-track"><div class="frac-sim-fill" style="width:${a.fractal.similarity}%"></div></div><div class="frac-sim-label">${a.fractal.matches} matches</div></div>
+        <div style="margin-top:4px;font-size:9px;color:var(--muted2)">Dir: ${a.fractal.direction} | conf ${a.fractal.confidence}%</div>
+      </div>
+      <div class="final-dec" style="background:${col}08;border-color:${col}40;">
+        <div><div class="final-label">SIGNAL</div><div class="final-signal" style="color:${col}">${a.decision.direction}</div></div>
+        <div class="final-sep"></div>
+        <div><div class="final-label">ENTRY</div><div class="final-price" style="color:var(--gold)">${fmt(a.price)}</div></div>
+        <div class="final-sep"></div>
+        <div><div class="final-label">TP</div><div class="final-price" style="color:var(--green)">${fmt(a.targets.tp)}</div></div>
+        <div class="final-sep"></div>
+        <div><div class="final-label">SL</div><div class="final-price" style="color:var(--red)">${fmt(a.targets.sl)}</div></div>
+        <div class="final-sep"></div>
+        <div><div class="final-label">R:R</div><div class="final-price">1:${a.targets.rr}</div><div style="font-size:9px;color:var(--muted2)">${a.decision.confidence}%</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function throttledFullUpdate() {
   const now = Date.now();
   if (now - window._lastFullUpdate < 3800) {
-    if (!_pendingFullUpdate) {
-      _pendingFullUpdate = true;
-      setTimeout(() => { _pendingFullUpdate = false; fullUpdate(); }, 3800);
+    if (!window._pendingFullUpdate) {
+      window._pendingFullUpdate = true;
+      setTimeout(() => { window._pendingFullUpdate = false; throttledFullUpdate(); }, 3800);
     }
     return;
   }
@@ -477,62 +577,68 @@ function fullUpdate() {
   const analyses = TFS.map(tf => analyseTF(tf));
   renderOverview(analyses.filter(Boolean));
   document.getElementById('tfGrid').innerHTML = analyses.map(a => a ? renderTFBlock(a) : '').join('');
-  const totalOBs = analyses.reduce((s,a)=>s+(a?a.obs.length:0),0);
-  const totalFVGs = analyses.reduce((s,a)=>s+(a?a.fvgs.length:0),0);
-  const totalFracs = analyses.reduce((s,a)=>s+(a?a.fractal.matches:0),0);
-  document.getElementById('statusOB').textContent = totalOBs;
-  document.getElementById('statusFVG').textContent = totalFVGs;
-  document.getElementById('statusFrac').textContent = totalFracs;
-  document.getElementById('statusTime').textContent = new Date().toLocaleTimeString('el-GR');
+  const totalOB = analyses.reduce((s,a)=>s+(a?a.obs.length:0),0);
+  const totalFVG = analyses.reduce((s,a)=>s+(a?a.fvgs.length:0),0);
+  const totalFrac = analyses.reduce((s,a)=>s+(a?a.fractal.matches:0),0);
+  document.getElementById('statusOB').innerText = totalOB;
+  document.getElementById('statusFVG').innerText = totalFVG;
+  document.getElementById('statusFrac').innerText = totalFrac;
+  document.getElementById('statusTime').innerText = new Date().toLocaleTimeString('el-GR');
 }
+
+// ==================== PRICE FEED ====================
+let _fallbackInterval = null;
+
 function fetchYahooPrice() {
   fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1m&range=1d')
-    .then(r=>r.ok?r.json():Promise.reject())
-    .then(data=>{
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
       let price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-      if(!price && data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close){
-        let closes = data.chart.result[0].indicators.quote[0].close.filter(c=>c!==null);
-        if(closes.length) price = closes[closes.length-1];
+      if (!price && data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close) {
+        const closes = data.chart.result[0].indicators.quote[0].close.filter(c=>c!==null);
+        if (closes.length) price = closes[closes.length-1];
       }
-      if(price && price>2000){
-        window._lastOandaPrice = price;
+      if (price && price > 2000) {
         onNewPrice(price, 'Yahoo/XAUUSD');
-        document.getElementById('priceMeta').textContent = 'XAUUSD SPOT ● LIVE';
+        document.getElementById('priceMeta').innerHTML = 'XAUUSD SPOT ● LIVE';
       }
     })
-    .catch(()=>{ if(!window._lastOandaPrice && !window._fallbackInterval) startFallbackFeed(); });
+    .catch(() => {
+      if (!window._lastOandaPrice && !_fallbackInterval) startFallbackFeed();
+    });
 }
-let _fallbackInterval = null;
+
 function startFallbackFeed() {
-  if(_fallbackInterval) return;
+  if (_fallbackInterval) return;
   let base = window._lastKnownPrice || 4700.00;
-  document.getElementById('priceMeta').textContent = 'SIMULATION ● REAL VOL';
-  _fallbackInterval = setInterval(()=>{
+  document.getElementById('priceMeta').innerHTML = 'SIMULATION ● REAL VOL';
+  _fallbackInterval = setInterval(() => {
     const drift = (Math.random()-0.5)*2.2;
     base = Math.max(4650, Math.min(4800, base + drift));
     onNewPrice(parseFloat(base.toFixed(2)), 'simulation');
   }, 2000);
 }
-function onNewPrice(price, source){
-  if(!recordTick(price, source)) return;
+
+function onNewPrice(price, source) {
+  if (!recordTick(price, source)) return;
   const priceEl = document.getElementById('livePrice');
   const prev = window._lastKnownPrice;
   const chg = prev ? price - prev : 0;
   priceEl.textContent = price.toFixed(2);
-  priceEl.style.color = chg>0?'var(--green)':chg<0?'var(--red)':'var(--gold)';
-  const chgStr = (chg>=0?'+':'')+chg.toFixed(2);
-  document.getElementById('priceMeta').innerHTML = source==='simulation'?`SIM ● ${chgStr}`:`XAUUSD ● ${chgStr}`;
-  fullUpdate(); // throttled
+  priceEl.style.color = chg > 0 ? 'var(--green)' : chg < 0 ? 'var(--red)' : 'var(--gold)';
+  const chgStr = (chg >= 0 ? '+' : '') + chg.toFixed(2);
+  document.getElementById('priceMeta').innerHTML = source === 'simulation' ? `SIM ● ${chgStr}` : `XAUUSD ● ${chgStr}`;
+  throttledFullUpdate(); // update only when necessary
 }
-// --------------------------------------------------------------
-//  INIT & POPUP
-// --------------------------------------------------------------
+
+// ==================== INIT ====================
 window.addEventListener('DOMContentLoaded', () => {
-  loadTicksFromStorage();
-  fullUpdate();
+  loadTicks();
+  throttledFullUpdate();
   fetchYahooPrice();
   setInterval(fetchYahooPrice, 5000);
-  setInterval(fullUpdate, 5000);
+  setInterval(throttledFullUpdate, 5000);
+  // popup toggle
   const btn = document.getElementById('tickCounterBtn');
   const popup = document.getElementById('tickPopup');
   btn.addEventListener('click', (e) => {
