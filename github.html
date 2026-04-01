@@ -3,52 +3,41 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>XAUUSD SMC · FVG · Fractal Similarity Scanner</title>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
+<title>XAUUSD SMC · FVG · Fractal Similarity</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#050709;--panel:#0b1018;--border:#1c2a3a;--gold:#f5c842;--green:#00e5a0;--red:#ff4060;--muted:#5a7090;--text:#c8d8e8}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Rajdhani,system-ui;background:var(--bg);color:var(--text);padding:20px}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.logo{font-family:Orbitron;font-weight:900;color:var(--gold);letter-spacing:2px}
-.controls{display:flex;gap:12px;align-items:center}
-.badge{background:rgba(245,200,66,0.08);padding:6px 10px;border-radius:6px;border:1px solid rgba(245,200,66,0.12);font-family:Share Tech Mono,monospace}
-.grid{display:grid;grid-template-columns:1fr 420px;gap:16px}
-.left{min-width:0}
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px}
-.tf-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;margin-bottom:8px}
-.tf-btn{padding:8px 12px;border-radius:6px;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:Orbitron;font-size:12px}
-.tf-btn.active{background:var(--gold);color:#000;border-color:var(--gold)}
-.small{font-family:Share Tech Mono,monospace;font-size:12px;color:var(--muted)}
-.stat{display:flex;align-items:center;gap:8px}
-.table{width:100%;border-collapse:collapse;font-family:Share Tech Mono,monospace;margin-top:8px}
-.table th,.table td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:left;font-size:13px}
-.status-bull{color:var(--green);font-weight:700}
-.status-bear{color:var(--red);font-weight:700}
-.status-neu{color:var(--muted);font-weight:600}
-.footer-note{font-size:12px;color:var(--muted);margin-top:8px}
+  :root{--bg:#050709;--panel:#0b1018;--border:#1c2a3a;--gold:#f5c842;--green:#00e5a0;--red:#ff4060;--muted:#5a7090;--text:#c8d8e8}
+  body{margin:0;font-family:'Share Tech Mono',monospace;background:var(--bg);color:var(--text);padding:18px}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .logo{font-family:'Orbitron',sans-serif;color:var(--gold);font-weight:900}
+  .wrap{display:grid;grid-template-columns:320px 1fr;gap:12px}
+  .card{background:var(--panel);border:1px solid var(--border);padding:12px;border-radius:8px}
+  .tf-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  .tf-btn{padding:6px 10px;border-radius:4px;border:1px solid var(--border);cursor:pointer;background:transparent;color:var(--muted)}
+  .tf-btn.active{background:rgba(245,200,66,0.12);border-color:var(--gold);color:var(--gold)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:6px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:left}
+  .small{font-size:12px;color:var(--muted)}
+  .status-bull{color:var(--green);font-weight:700}
+  .status-bear{color:var(--red);font-weight:700}
+  .status-neut{color:var(--muted);font-weight:700}
+  .muted{color:var(--muted)}
+  .controls{display:flex;gap:8px;align-items:center}
+  .btn{background:rgba(245,200,66,0.12);border:1px solid var(--gold);color:var(--gold);padding:6px 10px;border-radius:4px;cursor:pointer}
+  .note{font-size:12px;color:var(--muted);margin-top:8px}
+  canvas{width:100%;height:40px;border-radius:4px}
+  pre{white-space:pre-wrap;color:var(--muted);font-size:12px}
 </style>
 </head>
 <body>
-  <div class="header">
-    <div>
-      <div class="logo">XAUUSD · SMC / FVG / FRACTAL</div>
-      <div class="small">Realtime tick collector · 200.000 ticks cap</div>
-    </div>
-    <div class="controls">
-      <div id="tick-counter" class="badge">Ticks: 0</div>
-      <div id="last-price" class="badge">Price: —</div>
-    </div>
+<header>
+  <div>
+    <div class="logo">XAU/USD · SMC-FVG-FRACTAL</div>
+    <div class="small">Lightweight engine — focused detections</div>
   </div>
-
-  <!-- TradingView widget (kept for scraping) -->
-  <div class="panel" id="tv-wrap" style="display:flex;flex-direction:column;gap:8px">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:700">TradingView Widget (scrape DOM for price)</div>
-      <div style="font-family:Share Tech Mono,monospace;font-size:12px;color:var(--muted)">Scrape tries iframe → fallback</div>
-    </div>
-    <div id="tv-widget-wrap" style="min-height:48px;">
-      <div class="tradingview-widget-container" style="width:100%;height:48px">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div id="tv-widget-wrap" style="min-width:300px">
+      <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
         <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async defer>
         {
@@ -61,516 +50,525 @@ body{font-family:Rajdhani,system-ui;background:var(--bg);color:var(--text);paddi
         </script>
       </div>
     </div>
-    <div class="small">If iframe DOM is unavailable in your browser (cross-origin), the code will fallback to reading visible text inside the widget container.</div>
+    <div style="min-width:120px">
+      <div style="font-size:12px;color:var(--muted)">Live price</div>
+      <div id="live-price-ui" style="font-family:'Orbitron',sans-serif;font-weight:900;font-size:18px;color:var(--gold)">—</div>
+    </div>
   </div>
+</header>
 
-  <div class="grid">
-    <div class="left">
-      <div class="panel">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div style="font-weight:700">Timeframes</div>
-          <div class="small">Choose TF to refresh its analysis</div>
-        </div>
-        <div class="tf-row" id="tf-row">
-          <button class="tf-btn active" data-tf="M1">M1</button>
-          <button class="tf-btn" data-tf="M3">M3</button>
-          <button class="tf-btn" data-tf="M5">M5</button>
-          <button class="tf-btn" data-tf="M15">M15</button>
-          <button class="tf-btn" data-tf="M30">M30</button>
-          <button class="tf-btn" data-tf="M45">M45</button>
-          <button class="tf-btn" data-tf="H1">H1</button>
+<div class="wrap">
+  <!-- Left column: ticks & controls -->
+  <div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-weight:700">Ticks · Storage</div>
+        <div class="controls">
+          <button class="btn" onclick="forceLoadTicks()">FORCE-LOAD</button>
+          <button class="btn" onclick="clearTicks()">CLEAR</button>
         </div>
       </div>
 
-      <div class="panel" id="analysis-panel">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-weight:700">Per-Timeframe SMC · FVG · Fractal Similarity</div>
-          <button id="refresh-all" style="padding:6px 10px;border-radius:6px;background:var(--gold);border:none;cursor:pointer">REFRESH ALL</button>
-        </div>
-        <div id="tf-tables" style="margin-top:12px"></div>
-        <div class="footer-note">Κάθε δείκτης αποφασίζει ανεξάρτητα. Final decision = majority of indicators (min 2 agreeing). SL = ATR×1.5, TP = SL×2. Lot υπολογισμός για 0.1 lot.</div>
-      </div>
+      <div class="small">Stored ticks: <span id="tick-count">0</span> / 200000</div>
+      <div class="small">Total ever: <span id="tick-total">0</span></div>
+      <div class="note">Αν έχεις προηγούμενα saved ticks, πάτα FORCE-LOAD για να φορτωθούν ακόμα κι αν είναι παλιά.</div>
+    </div>
 
-      <div class="panel" id="history-panel">
-        <div style="font-weight:700;margin-bottom:8px">Tick History (recent 2000 shown)</div>
-        <div id="history-list" style="max-height:220px;overflow:auto;font-family:Share Tech Mono,monospace;font-size:12px"></div>
+    <div class="card" style="margin-top:12px">
+      <div style="font-weight:700;margin-bottom:8px">Settings</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label class="small">Min pattern similarity (%) <input id="sim-threshold" type="number" value="55" style="width:80px;margin-left:8px"></label>
+        <label class="small">Max ticks to keep <input id="max-ticks-input" type="number" value="200000" style="width:120px;margin-left:8px"></label>
+        <div>
+          <button class="btn" onclick="saveSettings()">Save</button>
+          <button class="btn" onclick="downloadTicks()">Download Ticks</button>
+        </div>
       </div>
     </div>
 
-    <div>
-      <div class="panel">
-        <div style="font-weight:700;margin-bottom:8px">Settings & Debug</div>
-        <div style="display:grid;grid-template-columns:1fr;gap:8px">
-          <div class="small">Max ticks stored: <b id="max-ticks">200000</b></div>
-          <div class="small">Stored ticks (memory): <b id="stored-ticks">0</b></div>
-          <div class="small">Total ticks ever: <b id="total-ticks">0</b></div>
-          <div class="small">Last scrap method: <b id="scrape-method">—</b></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div style="font-weight:700;margin-bottom:8px">Manual Price Input (if needed)</div>
-        <div style="display:flex;gap:8px">
-          <input id="manual-price-input" class="small" placeholder="e.g. 3172.50" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text)">
-          <button id="set-manual" style="padding:8px 12px;border-radius:6px;background:var(--green);border:none;cursor:pointer">SET</button>
-        </div>
-      </div>
+    <div class="card" style="margin-top:12px">
+      <div style="font-weight:700;margin-bottom:8px">Debug / Logs</div>
+      <pre id="debug-log" style="height:220px;overflow:auto;background:#06080b;padding:8px;border-radius:6px"></pre>
     </div>
   </div>
+
+  <!-- Right column: Timeframes and analysis -->
+  <div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-weight:700">Timeframes Analysis (SMC + FVG + FractalSimilarity)</div>
+        <div class="tf-row" id="tf-buttons">
+          <button class="tf-btn active" onclick="selectTF(this,'M1')">M1</button>
+          <button class="tf-btn" onclick="selectTF(this,'M3')">M3</button>
+          <button class="tf-btn" onclick="selectTF(this,'M5')">M5</button>
+          <button class="tf-btn" onclick="selectTF(this,'M15')">M15</button>
+          <button class="tf-btn" onclick="selectTF(this,'M30')">M30</button>
+          <button class="tf-btn" onclick="selectTF(this,'M45')">M45</button>
+          <button class="tf-btn" onclick="selectTF(this,'H1')">H1</button>
+        </div>
+      </div>
+      <div class="note">Κάθε δείκτης αξιολογείται ξεχωριστά και παρουσιάζει τη δική του απόφαση (BUY/SELL/NEUT). Το τελικό entry προκύπτει από σαφή κανόνες ανά δείκτη.</div>
+    </div>
+
+    <div id="tf-panels"></div>
+  </div>
+</div>
 
 <script>
-// ========== CONFIG ==========
-const MAX_TICKS = 200000;
-const SHOW_RECENT = 2000;      // show recent ticks in history panel
-const DEFAULT_LOT = 0.1;       // used to compute $ per pip (pipValue = lot * 100)
+/* ===========================
+   Config & Storage
+   =========================== */
 const TF_MAP = {M1:60,M3:180,M5:300,M15:900,M30:1800,M45:2700,H1:3600};
+let MAX_TICKS = parseInt(localStorage.getItem('max_ticks') || '200000');
+const TICKS_KEY = 'xauusd_ticks';
+let _priceHistory = [];
+let _totalTicksEver = parseInt(localStorage.getItem('xauusd_ticks_total') || '0');
+const debug = (s)=>{ const el=document.getElementById('debug-log'); el.textContent = (new Date()).toISOString() + ' ' + s + '\n' + el.textContent; };
 
-// ========== GLOBAL STATE ==========
-window._priceHistory = [];         // {price, time}
-window._totalTicksEver = 0;
-window._lastKnownPrice = null;
-window._prevPrice = null;
-window._scrapeMethod = 'none';
+document.getElementById('max-ticks-input').value = MAX_TICKS;
 
-// Restore ticks from localStorage (if exists)
-(function loadTicks(){
-  try{
-    const raw = localStorage.getItem('xauusd_ticks');
-    const savedTotal = parseInt(localStorage.getItem('xauusd_ticks_total')||'0',10);
-    if(raw){
-      const arr = JSON.parse(raw);
-      if(Array.isArray(arr)){
-        window._priceHistory = arr.slice(-MAX_TICKS);
-        window._totalTicksEver = Math.max(savedTotal, window._priceHistory.length);
-        updateTickUI();
-        console.log('Loaded ticks:', window._priceHistory.length, 'total ever', window._totalTicksEver);
-      }
-    }
-  }catch(e){ console.warn('loadTicks err', e); }
-})();
-
-// ========== UTILITIES ==========
-function updateTickUI(){
-  document.getElementById('tick-counter').textContent = 'Ticks: ' + window._priceHistory.length.toLocaleString('el-GR');
-  document.getElementById('stored-ticks').textContent = window._priceHistory.length.toLocaleString('el-GR');
-  document.getElementById('total-ticks').textContent = window._totalTicksEver.toLocaleString('el-GR');
-  document.getElementById('max-ticks').textContent = MAX_TICKS.toLocaleString('el-GR');
+/* ===========================
+   Persistence: save / load ticks
+   Fix for "not reading 54,732 ticks": we allow forced load
+   =========================== */
+function saveHistoryToStorage() {
+  try {
+    const keep = Math.min(_priceHistory.length, MAX_TICKS);
+    const recent = _priceHistory.slice(-keep);
+    localStorage.setItem(TICKS_KEY, JSON.stringify(recent));
+    localStorage.setItem('xauusd_ticks_saved', Date.now().toString());
+    localStorage.setItem('xauusd_ticks_total', String(_totalTicksEver || recent.length));
+    debug(`Saved ${recent.length} ticks (totalEver=${_totalTicksEver})`);
+  } catch(e){ debug('saveHistory error: '+e.message); }
 }
 
-// Append tick safely
-function recordPrice(price, ts = Date.now()){
-  if(!price || isNaN(price) || price < 1000) return;
-  window._priceHistory.push({price: +price, time: ts});
-  window._totalTicksEver++;
-  window._lastKnownPrice = +price;
-  document.getElementById('last-price').textContent = 'Price: ' + (+price).toFixed(2);
+function loadHistoryFromStorage(force=false) {
+  try {
+    const raw = localStorage.getItem(TICKS_KEY);
+    const savedTime = parseInt(localStorage.getItem('xauusd_ticks_saved') || '0');
+    const savedTotal = parseInt(localStorage.getItem('xauusd_ticks_total') || '0');
+    if (!raw) { debug('No saved ticks'); return; }
+    // By default we previously limited by savedTime <48h, that could block older useful ticks.
+    // Now we allow restore unless explicitly disabled. If force=false and savedTime very old, we still load but log warning.
+    const ticks = JSON.parse(raw);
+    if (!Array.isArray(ticks) || ticks.length === 0) { debug('Saved ticks invalid'); return; }
+    _priceHistory = ticks.slice(-MAX_TICKS);
+    _totalTicksEver = Math.max(savedTotal, _priceHistory.length);
+    debug(`Loaded ${_priceHistory.length} ticks from storage (savedTime=${new Date(savedTime).toISOString()}) totalEver=${_totalTicksEver}`);
+    updateTickUI();
+  } catch(e){ debug('loadHistory error: '+e.message); }
+}
+
+function forceLoadTicks(){
+  loadHistoryFromStorage(true);
+  alert('Force load attempted. Δες debug για λεπτομέρειες.');
+}
+
+function clearTicks(){
+  if(!confirm('Clear stored ticks?')) return;
+  _priceHistory = [];
+  _totalTicksEver = 0;
+  localStorage.removeItem(TICKS_KEY);
+  localStorage.removeItem('xauusd_ticks_saved');
+  localStorage.removeItem('xauusd_ticks_total');
   updateTickUI();
-
-  // Persist occasionally
-  if(window._totalTicksEver % 50 === 0){
-    saveTicksToStorage();
-  }
-  // Truncate keep-last when exceeding
-  if(window._priceHistory.length > MAX_TICKS){
-    // shift a block for performance
-    const removeCount = window._priceHistory.length - MAX_TICKS;
-    window._priceHistory.splice(0, removeCount);
-  }
-  // Update recent history view (throttled)
-  if(!window._renderThrottle) {
-    window._renderThrottle = true;
-    setTimeout(() => { renderRecentHistory(); window._renderThrottle = false; }, 400);
-  }
+  debug('Cleared ticks.');
 }
 
-// Save history to localStorage (lightweight subset up to last 48h)
-function saveTicksToStorage(){
-  try{
-    const copy = window._priceHistory.slice(-MAX_TICKS);
-    localStorage.setItem('xauusd_ticks', JSON.stringify(copy));
-    localStorage.setItem('xauusd_ticks_total', window._totalTicksEver.toString());
-  }catch(e){}
+function downloadTicks(){
+  const blob = new Blob([JSON.stringify(_priceHistory)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='xauusd_ticks.json'; a.click(); URL.revokeObjectURL(url);
 }
 
-// Recent history rendering
-function renderRecentHistory(){
-  const el = document.getElementById('history-list');
-  if(!el) return;
-  const recent = window._priceHistory.slice(-SHOW_RECENT).reverse();
-  el.innerHTML = recent.map(t => {
-    const time = new Date(t.time).toLocaleTimeString('el-GR');
-    return `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.03)"><span style="color:var(--muted)">${time}</span> <span style="margin-left:8px">${t.price.toFixed(2)}</span></div>`;
-  }).join('');
+/* ===========================
+   Tick recording & trimming
+   =========================== */
+function recordPrice(price) {
+  if(!price || price < 1000) return;
+  _priceHistory.push({price: parseFloat(price), time: Date.now()});
+  _totalTicksEver++;
+  if(_priceHistory.length > MAX_TICKS) _priceHistory.shift();
+  // occasional save
+  if(_totalTicksEver % 50 === 0) saveHistoryToStorage();
+  updateTickUI();
+}
+function updateTickUI(){
+  document.getElementById('tick-count').textContent = _priceHistory.length.toLocaleString('el-GR');
+  document.getElementById('tick-total').textContent = (_totalTicksEver||_priceHistory.length).toLocaleString('el-GR');
 }
 
-// ======= TradingView price reader (attempt iframe DOM, fallback to container text) =======
+/* ===========================
+   TradingView scraping (kept same approach)
+   Scrape the widget iframe DOM every 1s and feed recordPrice()
+   =========================== */
 let _tvReaderStarted = false;
 function startTVPriceReader(){
   if(_tvReaderStarted) return;
   _tvReaderStarted = true;
-
-  // Poll frequently but safely
-  setInterval(() => {
-    const wrap = document.getElementById('tv-widget-wrap');
-    if(!wrap) return;
-
-    // Try read iframe content (may be cross-origin)
-    const iframe = wrap.querySelector('iframe');
-    let found = false;
-    if(iframe){
-      try{
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        if(doc){
-          // find first element that looks like a price "xxxx.xx"
-          const nodes = doc.querySelectorAll('span,div');
-          for(const n of nodes){
-            const txt = (n.textContent || '').trim().replace(/,/g,'');
-            if(!txt) continue;
-            const m = txt.match(/^(\d{4,5}\.\d{1,3})$/);
-            if(m){
-              const price = parseFloat(m[1]);
-              if(price>1000 && price<20000){
-                recordPrice(price, Date.now());
-                window._scrapeMethod = 'iframe-dom';
-                document.getElementById('scrape-method').textContent = window._scrapeMethod;
-                found = true;
-                break;
-              }
-            }
-          }
-        }
-      }catch(e){
-        // cross-origin or no access — ignore and fallback
-      }
-    }
-
-    if(found) return;
-
-    // Fallback: read visible container text inside widget wrapper
+  setInterval(()=>{
     try{
-      const containerText = wrap.innerText || wrap.textContent || '';
-      const m = containerText.match(/([\d]{4,5}\.\d{1,3})/);
-      if(m){
-        const price = parseFloat(m[1].replace(/,/g,''));
-        if(price>1000 && price<20000){
-          recordPrice(price, Date.now());
-          window._scrapeMethod = 'container-text';
-          document.getElementById('scrape-method').textContent = window._scrapeMethod;
-          return;
+      const wrap = document.getElementById('tv-widget-wrap');
+      if(!wrap) return;
+      const spans = wrap.querySelectorAll('span,div');
+      for(const el of spans){
+        const txt = (el.textContent||'').trim().replace(/,/g,'');
+        // Quick numeric detection: must contain a dot and number >1000
+        if(/\d+\.\d+/.test(txt)){
+          const v = parseFloat(txt);
+          if(v>1000 && v<20000){
+            // update UI & record
+            const prev = parseFloat(document.getElementById('live-price-ui').dataset.prev || v);
+            document.getElementById('live-price-ui').textContent = v.toFixed(2);
+            document.getElementById('live-price-ui').dataset.prev = v;
+            recordPrice(v);
+            return;
+          }
         }
       }
     }catch(e){}
-  }, 900); // poll ~1s
+  },1000);
 }
-setTimeout(startTVPriceReader, 2000);
+setTimeout(startTVPriceReader,3500);
 
-// Manual input
-document.getElementById('set-manual').addEventListener('click', () => {
-  const v = parseFloat(document.getElementById('manual-price-input').value);
-  if(v && v>1000) recordPrice(v, Date.now());
-});
-
-// ========== CORE INDICATOR FUNCTIONS ==========
-
-// Build candles from tick history for a given tf string (M1, M3, ...)
-function buildCandlesFromHistory(tf){
-  const sec = TF_MAP[tf] || 300;
-  const tfMs = sec * 1000;
-  const history = window._priceHistory;
-  if(!history || history.length < 3) return null;
-
+/* ===========================
+   Candle builder from ticks (efficient bucket grouping)
+   =========================== */
+function buildCandlesFromHistory(tf) {
+  const history = _priceHistory;
+  if(!history || history.length < 10) return null;
+  const tfMs = (TF_MAP[tf]||300)*1000;
   const bucket = new Map();
   for(let i=0;i<history.length;i++){
     const t = history[i];
     const key = Math.floor(t.time / tfMs) * tfMs;
     const b = bucket.get(key);
-    if(!b) bucket.set(key, {open: t.price, high: t.price, low: t.price, close: t.price, volume:1, time:key});
-    else {
-      if(t.price > b.high) b.high = t.price;
-      if(t.price < b.low) b.low = t.price;
-      b.close = t.price;
-      b.volume++;
-    }
+    if(!b) bucket.set(key, {open:t.price,high:t.price,low:t.price,close:t.price,volume:1,time:key});
+    else { if(t.price> b.high) b.high=t.price; if(t.price<b.low) b.low=t.price; b.close=t.price; b.volume++; }
   }
   const candles = Array.from(bucket.values()).sort((a,b)=>a.time-b.time);
   return candles.length >= 5 ? candles : null;
 }
 
-function calcATRFromCandles(candles, period=14){
-  if(!candles || candles.length < period+1) return 1;
-  const n = candles.length;
+/* ===========================
+   Indicators / detectors
+   - calcATR
+   - calcWilliamsFractals
+   - detectFVG
+   - detectOrderBlocks (simple SMC detection)
+   - findPatternRepetition (similarity)
+   Each returns structured object with signal and justification
+   =========================== */
+
+function calcATR(highs,lows,closes,period=14){
+  if(closes.length < period+1) return 1;
   let trSum = 0;
-  for(let i=n-period;i<n;i++){
-    const tr = Math.max(candles[i].high - candles[i].low, Math.abs(candles[i].high - (candles[i-1]?.close||candles[i].open)), Math.abs(candles[i].low - (candles[i-1]?.close||candles[i].open)));
+  for(let i=closes.length-period;i<closes.length;i++){
+    const tr = Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1]));
     trSum += tr;
   }
-  return trSum / period;
+  return trSum/period;
 }
 
-// Bill Williams fractals (up/down)
-function calcWilliamsFractals(highs, lows){
+/* Bill Williams fractals: returns arrays of up/down fractals (idx relative to candles array) */
+function calcWilliamsFractals(highs,lows){
   const n = highs.length;
   const up = [], down = [];
+  if(n < 5) return {up,down};
   for(let i=2;i<n-2;i++){
     if(highs[i] > highs[i-1] && highs[i] > highs[i-2] && highs[i] > highs[i+1] && highs[i] > highs[i+2]) up.push({idx:i,price:highs[i]});
-    if(lows[i]  < lows[i-1] && lows[i]  < lows[i-2] && lows[i]  < lows[i+1] && lows[i]  < lows[i+2]) down.push({idx:i,price:lows[i]});
+    if(lows[i]  < lows[i-1]  && lows[i]  < lows[i-2]  && lows[i]  < lows[i+1]  && lows[i]  < lows[i+2]) down.push({idx:i,price:lows[i]});
   }
-  return {up,down};
+  return {upFractals:up,downFractals:down};
 }
 
-// Detect Fair Value Gap (FVG) on last 3 candles (bull/bear)
+/* Detect Fair Value Gaps (FVG) in last 10 candles: naive rule:
+   Bullish FVG if candle i-2 high < candle i close (imbalance)
+   Returns list of gaps with type and price band */
 function detectFVG(candles){
-  if(!candles || candles.length < 3) return {type:'NONE'};
-  const c1 = candles[candles.length-3];
-  const c2 = candles[candles.length-2];
-  const c3 = candles[candles.length-1];
-  // Bull FVG when c1.high < c3.low (gap above)
-  if(c1.high < c3.low) return {type:'BULL', gapHigh:c3.low, gapLow:c1.high};
-  // Bear FVG when c1.low > c3.high (gap below)
-  if(c1.low > c3.high) return {type:'BEAR', gapHigh:c1.low, gapLow:c3.high};
-  return {type:'NONE'};
-}
-
-// Simplified Order Block detection: find last bearish candle preceding a strong bullish move (bull OB) and symmetric
-function detectOrderBlocks(candles){
-  // Return last bullish OB and bearish OB as price zones {start,end, strength}
-  if(!candles || candles.length < 6) return {bull:null,bear:null};
-  // look for patterns: bearish candle followed by X bullish candles with strong body
-  const n = candles.length;
-  let bullOB = null, bearOB = null;
-  for(let i=n-6;i<n-2;i++){
-    const a = candles[i], b = candles[i+1], c = candles[i+2];
-    // Bull OB: a is bearish (open>close) and then b,c strong bullish closes > a.open
-    if(a.open > a.close && b.close > b.open && c.close > c.open && b.close > a.open && c.close > b.close){
-      bullOB = {start: Math.min(a.open,a.close), end: Math.max(a.open,a.close), idx:i, type:'BULL', strength: 'MEDIUM'};
+  const res=[];
+  for(let i=2;i<candles.length;i++){
+    const c1 = candles[i-2], c2 = candles[i-1], c3 = candles[i];
+    // bullish gap: c1.high < c3.low  (gap above)
+    if(c3.low > c1.high){
+      res.push({type:'BULL',low:c1.high,high:c3.low,idx:i,desc:'Bullish FVG'});
     }
-    // Bear OB: a is bullish then two strong bearish
-    if(a.close > a.open && b.close < b.open && c.close < c.open && b.close < a.open && c.close < b.close){
-      bearOB = {start: Math.min(a.open,a.close), end: Math.max(a.open,a.close), idx:i, type:'BEAR', strength:'MEDIUM'};
+    // bearish gap
+    if(c3.high < c1.low){
+      res.push({type:'BEAR',low:c3.high,high:c1.low,idx:i,desc:'Bearish FVG'});
     }
   }
-  return {bull: bullOB, bear: bearOB};
+  return res;
 }
 
-// Find pattern repetition similarity — simplified fast approach
+/* Detect Order Blocks: simplified approach
+   - Bullish OB: a bearish candle followed by strong bullish move (close > prev high by multiplier)
+   - Bearish OB: inverse
+   Returns last few OBs
+*/
+function detectOrderBlocks(candles){
+  const obs=[];
+  const n=candles.length;
+  if(n<6) return obs;
+  for(let i=1;i<n-2;i++){
+    const prev = candles[i-1], cur = candles[i], nxt = candles[i+1];
+    // Bullish OB: prev is bearish and afterwards price rallies strongly
+    const rally = nxt.close - cur.close;
+    if(prev.close < prev.open && nxt.close > cur.close && (nxt.close - prev.open) > (prev.open - prev.close) * 0.6){
+      // OB zone is prev.open -> prev.close (body), store mid as level
+      obs.push({type:'BULL_OB',level: (prev.open+prev.close)/2,zone:{top:prev.open,bottom:prev.close},idx:i-1,score: Math.abs(rally)});
+    }
+    // Bearish OB
+    if(prev.close > prev.open && nxt.close < cur.close && (prev.close - nxt.close) > (prev.close - prev.open) * 0.6){
+      obs.push({type:'BEAR_OB',level:(prev.open+prev.close)/2,zone:{top:prev.open,bottom:prev.close},idx:i-1,score:Math.abs(nxt.close-cur.close)});
+    }
+  }
+  return obs;
+}
+
+/* Pattern repetition / similarity (lightweight):
+   - Compare normalized returns of recent window to historical windows
+   - Returns similarity% and predicted move after the match
+*/
 function findPatternRepetition(closes, lookback=10, historyLen=200){
-  if(!closes || closes.length < lookback + 20) return null;
+  if(closes.length < lookback + 8) return null;
   const recent = closes.slice(-lookback);
-  // compute normalized returns for recent
   const recentNorm = [];
   for(let i=1;i<recent.length;i++) recentNorm.push((recent[i]-recent[i-1])/recent[i-1]);
   const maxHistory = Math.min(historyLen, closes.length - lookback - 8);
   const start = closes.length - lookback - maxHistory;
-  let best = {score:Infinity, moveAfter:0};
-  const top = [];
-  for(let s = start; s <= closes.length - lookback - 8; s++){
-    const window = closes.slice(s, s + lookback);
-    const wNorm = [];
-    for(let i=1;i<window.length;i++) wNorm.push((window[i]-window[i-1])/window[i-1]);
-    // RMS diff
-    let diff = 0;
-    for(let i=0;i<recentNorm.length;i++) diff += Math.pow((recentNorm[i] - (wNorm[i]||0)),2);
-    diff = Math.sqrt(diff / recentNorm.length);
-    // what happened next 8 bars?
-    const after = closes[s+lookback+7] - closes[s+lookback]; // price move
-    if(diff < best.score) best = {score:diff, moveAfter: after};
-    top.push({score:diff, moveAfter:after});
+  let best = null, top=[];
+  for(let s=start; s<closes.length - lookback - 8; s++){
+    const win = closes.slice(s, s+lookback);
+    const winNorm = [];
+    for(let i=1;i<win.length;i++) winNorm.push((win[i]-win[i-1])/win[i-1]);
+    if(winNorm.length !== recentNorm.length) continue;
+    let diff=0;
+    for(let k=0;k<recentNorm.length;k++) diff += Math.pow(recentNorm[k]-winNorm[k],2);
+    const score = Math.sqrt(diff/recentNorm.length);
+    // what happened next (after lookback): percent change over next 8 candles
+    const after = closes[s+lookback+7] ? (closes[s+lookback+7]-closes[s+lookback])/closes[s+lookback]*100 : 0;
+    top.push({score,after});
+    top.sort((a,b)=>a.score-b.score); if(top.length>5) top.pop();
+    if(!best || score < best.score) best = {score,after};
   }
-  top.sort((a,b)=>a.score-b.score);
-  const top3 = top.slice(0,3);
-  if(top3.length===0) return null;
-  // similarity: scaled
-  const similarity = Math.max(0, Math.min(100, Math.round((1 - top3[0].score/0.5) * 100)));
-  const avgMove = top3.reduce((s,x)=>s+x.moveAfter,0)/top3.length;
-  const predictedDir = avgMove > 0 ? 'UP' : 'DOWN';
-  const confidence = similarity > 75 ? 'HIGH' : similarity > 50 ? 'MEDIUM' : 'LOW';
-  return {similarity, predictedMove: avgMove, predictedDir, confidence};
+  if(!best) return null;
+  const similarity = Math.max(0, Math.min(100, 100 - best.score*50)); // rough scaling
+  const avgAfter = top.length ? top.reduce((s,t)=>s+t.after,0)/top.length : best.after;
+  return {similarity:Math.round(similarity),predictedMovePct:avgAfter.toFixed(2),confidence: similarity>75?'HIGH':similarity>55?'MEDIUM':'LOW'};
 }
 
-// ========== PER-TF ANALYSIS ==========
-function analyzeTF(tf){
+/* ===========================
+   Analysis per timeframe:
+   - build candles
+   - compute indicators: ATR, OBs, FVGs, Fractals, Pattern similarity
+   - for each indicator return its own signal object {source,signal,reason}
+   - compute SL/TP based on ATR + rule
+   =========================== */
+async function analyzeTF(tf){
   const candles = buildCandlesFromHistory(tf);
-  if(!candles) return {tf, ok:false, reason:'insufficient candles'};
-  const closes = candles.map(c => c.close);
-  const highs = candles.map(c => c.high);
-  const lows  = candles.map(c => c.low);
-
-  // Indicator 1: Order Blocks
-  const ob = detectOrderBlocks(candles);
-  let obVerdict = 'NEUT';
-  if(ob.bull && (window._lastKnownPrice > ob.bull.end)) obVerdict = 'BULL';
-  if(ob.bear && (window._lastKnownPrice < ob.bear.start)) obVerdict = 'BEAR';
-
-  // Indicator 2: FVG
-  const fvg = detectFVG(candles);
-  let fvgVerdict = 'NEUT';
-  if(fvg.type === 'BULL') fvgVerdict = 'BULL';
-  if(fvg.type === 'BEAR') fvgVerdict = 'BEAR';
-
-  // Indicator 3: Fractals
-  const fr = calcWilliamsFractals(highs, lows);
-  const lastUp = fr.up[fr.up.length-1];
-  const lastDn = fr.down[fr.down.length-1];
-  let fracVerdict = 'NEUT';
-  if(lastUp && lastDn){
-    // bullish fractal structure if last up fractal is after last down fractal and price > lastDown
-    if(lastUp.idx > lastDn.idx && window._lastKnownPrice > lastDn.price) fracVerdict = 'BULL';
-    else if(lastDn.idx > lastUp.idx && window._lastKnownPrice < lastUp.price) fracVerdict = 'BEAR';
+  if(!candles || candles.length < 8) return {tf,ready:false,reason:'insufficient candles'};
+  const closes = candles.map(c=>c.close);
+  const highs = candles.map(c=>c.high);
+  const lows = candles.map(c=>c.low);
+  const last = closes[closes.length-1];
+  // ATR
+  const atr = calcATR(highs,lows,closes,14);
+  // OBs
+  const obs = detectOrderBlocks(candles);
+  const lastOB = obs.length ? obs[obs.length-1] : null;
+  let obSignal = {source:'OrderBlock',signal:'NEUT',reason:'no strong OB'};
+  if(lastOB){
+    if(lastOB.type==='BULL_OB' && last < lastOB.level+ (atr*0.5)) obSignal = {source:'OrderBlock',signal:'BUY',reason:`Bull OB near ${lastOB.level.toFixed(2)}`};
+    if(lastOB.type==='BEAR_OB' && last > lastOB.level - (atr*0.5)) obSignal = {source:'OrderBlock',signal:'SELL',reason:`Bear OB near ${lastOB.level.toFixed(2)}`};
+  }
+  // FVG
+  const fvgs = detectFVG(candles);
+  let fvgSignal = {source:'FVG',signal:'NEUT',reason:'no notable FVG'};
+  if(fvgs.length){
+    const recentFVG = fvgs[fvgs.length-1];
+    // If price returning into FVG area -> trade direction is opposite of gap type (FVG fills)
+    if(recentFVG.type === 'BULL' && last > recentFVG.low - atr*0.5) fvgSignal = {source:'FVG',signal:'BUY',reason:`Bull FVG ${recentFVG.low.toFixed(2)}->${recentFVG.high.toFixed(2)}`};
+    if(recentFVG.type === 'BEAR' && last < recentFVG.high + atr*0.5) fvgSignal = {source:'FVG',signal:'SELL',reason:`Bear FVG ${recentFVG.low.toFixed(2)}->${recentFVG.high.toFixed(2)}`};
+  }
+  // Fractals
+  const fract = calcWilliamsFractals(highs,lows);
+  let fractSignal = {source:'Fractal',signal:'NEUT',reason:'no decisive fractal alignment'};
+  const lastUp = fract.upFractals[fract.upFractals.length-1];
+  const lastDown = fract.downFractals[fract.downFractals.length-1];
+  if(lastUp && !lastDown) fractSignal = {source:'Fractal',signal:'BUY',reason:`Last up fractal ${lastUp.price.toFixed(2)}`};
+  if(lastDown && !lastUp) fractSignal = {source:'Fractal',signal:'SELL',reason:`Last down fractal ${lastDown.price.toFixed(2)}`};
+  if(lastUp && lastDown){
+    // decide by recency
+    fractSignal = (lastUp.idx > lastDown.idx && last > lastDown.price) ? {source:'Fractal',signal:'BUY',reason:'Up fractal more recent and price > down fractal'}
+                 : (lastDown.idx > lastUp.idx && last < lastUp.price) ? {source:'Fractal',signal:'SELL',reason:'Down fractal more recent and price < up fractal'}
+                 : {source:'Fractal',signal:'NEUT',reason:'mixed fractals'};
+  }
+  // Pattern similarity
+  const pattern = findPatternRepetition(closes, Math.min(10, Math.max(6, Math.floor(closes.length/10))), 200);
+  let patSignal = {source:'Pattern',signal:'NEUT',reason:'no good match'};
+  if(pattern && pattern.similarity >= (parseInt(document.getElementById('sim-threshold').value)||55)){
+    const dir = parseFloat(pattern.predictedMovePct) > 0 ? 'BUY' : 'SELL';
+    patSignal = {source:'Pattern',signal:dir,reason:`sim ${pattern.similarity}% → ${pattern.predictedMovePct}%`};
   }
 
-  // Indicator 4: Pattern similarity (predictive)
-  const pattern = findPatternRepetition(closes, 10, 400);
-  let patVerdict = 'NEUT';
-  if(pattern && pattern.confidence !== 'LOW'){
-    patVerdict = pattern.predictedDir === 'UP' ? 'BULL' : 'BEAR';
+  /* Each indicator stands alone: include its decision. Then apply a simple final-rule:
+     If at least TWO indicators independently recommend the SAME direction (BUY/SELL),
+     and ATR-based SL/TP acceptable, propose final entry. Otherwise WAIT.
+  */
+  const indicators = [obSignal,fvgSignal,fractSignal,patSignal];
+
+  // Count votes per direction (only BUY/SELL)
+  const votes = indicators.reduce((acc,ind)=>{
+    if(ind.signal==='BUY') acc.buy++;
+    else if(ind.signal==='SELL') acc.sell++;
+    return acc;
+  },{buy:0,sell:0});
+
+  // ATR-based SL/TP: SL = ATR * slMult (per timeframe), TP = SL * rr
+  const slMultMap = {M1:1.2,M3:1.4,M5:1.6,M15:2.0,M30:2.6,M45:3.0,H1:3.6};
+  const rrMap = {M1:1.6,M3:1.8,M5:2.0,M15:2.2,M30:2.5,M45:2.8,H1:3.0};
+  const slMult = slMultMap[tf] || 1.5;
+  const rr = rrMap[tf] || 2.0;
+  const slDist = atr * slMult;
+  const tpDist = slDist * rr;
+  const final = {tf,last,atr,indicators,votes,ready:true};
+
+  // final decision
+  if(votes.buy >= 2 && votes.buy > votes.sell){
+    final.decision = 'BUY';
+    final.entry = last;
+    final.sl = parseFloat((last - slDist).toFixed(2));
+    final.tp = parseFloat((last + tpDist).toFixed(2));
+    final.estimatedProfit = parseFloat((tpDist).toFixed(2));
+  } else if(votes.sell >= 2 && votes.sell > votes.buy){
+    final.decision = 'SELL';
+    final.entry = last;
+    final.sl = parseFloat((last + slDist).toFixed(2));
+    final.tp = parseFloat((last - tpDist).toFixed(2));
+    final.estimatedProfit = parseFloat((tpDist).toFixed(2));
+  } else {
+    final.decision = 'WAIT';
+    final.entry = last;
+    final.sl = null; final.tp = null; final.estimatedProfit = 0;
   }
 
-  // ATR (for SL/TP)
-  const atr = calcATRFromCandles(candles, 14);
-  const slDist = atr * 1.5;
-  const tpDist = slDist * 2;
-  const price = window._lastKnownPrice || closes[closes.length-1];
-
-  // Each indicator returns its own decision (BUY/SELL/NEUT)
-  const decisions = {
-    orderBlock: { verdict: obVerdict, info: ob },
-    fvg: { verdict: fvgVerdict, info: fvg },
-    fractal: { verdict: fracVerdict, info: {lastUp,lastDn} },
-    pattern: { verdict: patVerdict, info: pattern }
-  };
-
-  // Final decision: require at least 2 indicators agreeing for BUY or SELL
-  const counts = {BULL:0, BEAR:0, NEUT:0};
-  Object.values(decisions).forEach(d => counts[d.verdict==='BULL'?'BULL':d.verdict==='BEAR'?'BEAR':'NEUT']++);
-  let finalDecision = 'WAIT';
-  if(counts.BULL >= 2) finalDecision = 'BUY';
-  else if(counts.BEAR >= 2) finalDecision = 'SELL';
-
-  // Suggested entry/SL/TP
-  let entry = price;
-  let sl = finalDecision === 'BUY' ? entry - slDist : finalDecision === 'SELL' ? entry + slDist : null;
-  let tp = finalDecision === 'BUY' ? entry + tpDist : finalDecision === 'SELL' ? entry - tpDist : null;
-
-  // Expected profit in $ for 0.1 lot (pip value = lot*100, pip = 1.0 price unit)
-  const lot = DEFAULT_LOT;
-  const pipValue = lot * 100;
-  const expectedProfit = tp ? Math.abs((tp - entry) * pipValue) : 0;
-  const expectedLoss = sl ? Math.abs((entry - sl) * pipValue) : 0;
-
-  return {
-    tf, ok:true, candlesCount: candles.length, price,
-    atr: +atr.toFixed(3), slDist: +slDist.toFixed(3), tpDist: +tpDist.toFixed(3),
-    decisions, finalDecision, entry:+entry.toFixed(2), sl: sl? +sl.toFixed(2):null, tp: tp? +tp.toFixed(2):null,
-    expectedProfit: +expectedProfit.toFixed(2), expectedLoss: +expectedLoss.toFixed(2), pattern
-  };
+  // add OB/FVG/fractal/pattern details
+  final.obs = obs.slice(-5);
+  final.fvgs = fvgs.slice(-5);
+  final.fractals = fract;
+  final.pattern = pattern;
+  return final;
 }
 
-// ========== RENDER TABLES ==========
-const TFS = ['M1','M3','M5','M15','M30','M45','H1'];
-
-function renderAllTables(){
-  const container = document.getElementById('tf-tables');
-  container.innerHTML = '';
-  TFS.forEach(tf=>{
-    const box = document.createElement('div');
-    box.className = 'panel';
-    box.id = `panel-${tf}`;
-    box.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:700">${tf} analysis</div>
-      <div class="small">candles: <span id="c-${tf}">—</span></div>
+/* ===========================
+   UI rendering per timeframe
+   =========================== */
+const TFs = ['M1','M3','M5','M15','M30','M45','H1'];
+function renderTFPanels(){
+  const container = document.getElementById('tf-panels');
+  container.innerHTML = TFs.map(tf=>`
+    <div class="card" id="panel-${tf}" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700">${tf}</div>
+        <div class="small" id="panel-${tf}-status">Loading...</div>
+      </div>
+      <div id="panel-${tf}-body" style="margin-top:8px">
+        <div class="small muted">Analyzing…</div>
+      </div>
     </div>
-    <div id="table-${tf}" style="margin-top:10px">Loading...</div>`;
-    container.appendChild(box);
-  });
-  // initial populate
-  refreshAllAnalyses();
+  `).join('');
 }
+renderTFPanels();
 
-async function refreshAllAnalyses(){
-  document.getElementById('refresh-all').disabled = true;
-  // run analyzeTF sequentially to spread CPU
-  for(const tf of TFS){
-    const res = analyzeTF(tf);
-    renderTFResult(tf, res);
-    await new Promise(r=>setTimeout(r, 120)); // tiny pause for UI
+async function refreshAllTFs(){
+  for(const tf of TFs){
+    try{
+      const res = await analyzeTF(tf);
+      renderTFResult(tf,res);
+    }catch(e){ debug('analyzeTF error '+tf+': '+e.message); }
   }
-  document.getElementById('refresh-all').disabled = false;
 }
+function renderTFResult(tf,res){
+  const body = document.getElementById(`panel-${tf}-body`);
+  const status = document.getElementById(`panel-${tf}-status`);
+  if(!res || !res.ready){ status.textContent = 'Insufficient data'; body.innerHTML = '<div class="small muted">Δεν υπάρχουν αρκετά candles</div>'; return; }
+  status.textContent = `ATR ${res.atr.toFixed(2)} · ${res.decision}`;
+  const indRows = res.indicators.map(i=>`<tr><td>${i.source}</td><td class="${i.signal==='BUY'?'status-bull':i.signal==='SELL'?'status-bear':'status-neut'}">${i.signal}</td><td class="small muted">${i.reason}</td></tr>`).join('');
+  const obsHtml = res.obs.length ? res.obs.map(o=>`<div class="small">${o.type} @ ${o.level.toFixed(2)}</div>`).join('') : '<div class="small muted">none</div>';
+  const fvgsHtml = res.fvgs.length ? res.fvgs.map(f=>`<div class="small">${f.type} ${f.low.toFixed(2)}→${f.high.toFixed(2)}</div>`).join('') : '<div class="small muted">none</div>';
+  const fractHtml = `<div class="small">Up:${res.fractals.upFractals.length} Down:${res.fractals.downFractals.length}</div>`;
+  const patHtml = res.pattern ? `<div class="small">sim:${res.pattern.similarity}% move:${res.pattern.predictedMovePct}% (${res.pattern.confidence})</div>` : '<div class="small muted">no match</div>';
 
-function renderTFResult(tf, res){
-  const tableEl = document.getElementById(`table-${tf}`);
-  const countEl = document.getElementById(`c-${tf}`);
-  if(countEl) countEl.textContent = res.ok ? res.candlesCount : '—';
-  if(!tableEl) return;
-  if(!res.ok){
-    tableEl.innerHTML = `<div class="small">Insufficient data to analyze ${tf} (need more ticks)</div>`;
-    return;
-  }
-  const dec = res.decisions;
-  const mk = (v)=> v==='BULL' ? `<span class="status-bull">BUY</span>` : v==='BEAR' ? `<span class="status-bear">SELL</span>` : `<span class="status-neu">NEUT</span>`;
-
-  const patternInfo = res.pattern ? `${res.pattern.similarity}% match · ${res.pattern.confidence}` : '—';
-
-  tableEl.innerHTML = `
-    <table class="table">
-      <thead><tr><th>Indicator</th><th>Verdict</th><th>Details</th></tr></thead>
-      <tbody>
-        <tr><td>Order Block</td><td>${mk(dec.orderBlock.verdict)}</td><td>${dec.orderBlock.info.bull ? 'Bull OB present' : dec.orderBlock.info.bear ? 'Bear OB present' : 'No clear OB'}</td></tr>
-        <tr><td>FVG (last 3 candles)</td><td>${mk(dec.fvg.verdict)}</td><td>${dec.fvg.info.type || '—'}</td></tr>
-        <tr><td>Fractal structure</td><td>${mk(dec.fractal.verdict)}</td><td>LastUp:${dec.fractal.info.lastUp?dec.fractal.info.lastUp.price:'—'} LastDn:${dec.fractal.info.lastDn?dec.fractal.info.lastDn.price:'—'}</td></tr>
-        <tr><td>Pattern similarity</td><td>${mk(dec.pattern.verdict)}</td><td>${patternInfo}</td></tr>
-      </tbody>
-    </table>
-
-    <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div class="small">Final decision: <b style="margin-left:6px">${res.finalDecision}</b></div>
-      <div class="small">Candles used: ${res.candlesCount}</div>
-      <div class="small">Entry: <b>${res.entry.toFixed(2)}</b></div>
-      <div class="small">ATR: <b>${res.atr.toFixed(3)}</b></div>
-      <div class="small">Stop Loss: <b>${res.sl?res.sl.toFixed(2):'—'}</b></div>
-      <div class="small">Take Profit: <b>${res.tp?res.tp.toFixed(2):'—'}</b></div>
-      <div class="small">Expected Profit (0.1 lot): <b style="color:${res.expectedProfit>=0?'var(--green)':'var(--red)'}">$${res.expectedProfit.toFixed(2)}</b></div>
-      <div class="small">Expected Loss (0.1 lot): <b style="color:var(--red)">$${res.expectedLoss.toFixed(2)}</b></div>
+  body.innerHTML = `
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <div style="font-weight:700;margin-bottom:6px">Indicators</div>
+        <table><thead><tr><th>Source</th><th>Signal</th><th>Reason</th></tr></thead><tbody>${indRows}</tbody></table>
+      </div>
+      <div style="width:220px">
+        <div style="font-weight:700">SMC / FVG</div>
+        ${obsHtml}
+        <div style="height:8px"></div>
+        <div style="font-weight:700">FVG</div>
+        ${fvgsHtml}
+        <div style="height:8px"></div>
+        <div style="font-weight:700">Fractals</div>
+        ${fractHtml}
+        <div style="height:8px"></div>
+        <div style="font-weight:700">Pattern</div>
+        ${patHtml}
+      </div>
+    </div>
+    <div style="margin-top:10px;border-top:1px solid rgba(255,255,255,0.03);padding-top:10px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="small">Final decision: <span style="font-weight:900">${res.decision}</span></div>
+        ${res.decision!=='WAIT' ? `<div class="small">Entry ${res.entry.toFixed(2)} · SL ${res.sl} · TP ${res.tp} · EstProfit ${res.estimatedProfit}</div>` : `<div class="small muted">No safe entry</div>`}
+      </div>
+      <div>
+        <button class="btn" onclick="exportTF('${tf}')">Export</button>
+      </div>
     </div>
   `;
 }
+function exportTF(tf){
+  const panel = document.getElementById(`panel-${tf}-body`);
+  const txt = panel ? panel.innerText : '';
+  const blob = new Blob([txt], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download = `analysis_${tf}.txt`; a.click(); URL.revokeObjectURL(url);
+}
 
-// Hook TF buttons to refresh a single TF
-document.getElementById('tf-row').addEventListener('click', e=>{
-  const btn = e.target.closest('.tf-btn');
-  if(!btn) return;
-  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  const tf = btn.dataset.tf;
-  const res = analyzeTF(tf);
-  renderTFResult(tf, res);
-});
+/* ===========================
+   Utilities & intervals
+   =========================== */
+function selectTF(el,tf){
+  document.querySelectorAll('#tf-buttons .tf-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  // scroll to panel
+  document.getElementById(`panel-${tf}`).scrollIntoView({behavior:'smooth',block:'start'});
+}
 
-// Refresh-all button
-document.getElementById('refresh-all').addEventListener('click', refreshAllAnalyses);
+function saveSettings(){
+  MAX_TICKS = parseInt(document.getElementById('max-ticks-input').value) || 200000;
+  localStorage.setItem('max_ticks', String(MAX_TICKS));
+  localStorage.setItem('max_ticks_value', String(MAX_TICKS));
+  document.getElementById('max-ticks-input').value = MAX_TICKS;
+  debug('Saved settings: MAX_TICKS=' + MAX_TICKS);
+}
 
-// Initial render
-renderAllTables();
+/* Start periodic tasks */
+loadHistoryFromStorage(); // load at startup
+setTimeout(()=>{ refreshAllTFs(); }, 1500);
+setInterval(()=>{ refreshAllTFs(); }, 5000); // every 5s recompute (lightweight)
+setInterval(()=>{ saveHistoryToStorage(); }, 120000); // save every 2min
+setInterval(()=>{ updateTickUI(); }, 2000);
 
-// Periodic refresh (every 8s)
-setInterval(()=> {
-  // update small UI elements
-  document.getElementById('scrape-method').textContent = window._scrapeMethod || '—';
-  // auto-refresh only M1 frequently; others every cycle
-  const activeTF = document.querySelector('.tf-btn.active')?.dataset?.tf || 'M1';
-  const resActive = analyzeTF(activeTF);
-  renderTFResult(activeTF, resActive);
-  // refresh all every 20s
-}, 8000);
+/* Initial debug */
+debug('Engine initialized.');
 
-// Save ticks periodically
-setInterval(saveTicksToStorage, 2*60*1000);
-
-// Expose a debug call
-window._debug = { analyzeTF, recordPrice, buildCandlesFromHistory };
-
-// On load: small delayed refresh to give ticks time to collect
-setTimeout(()=>{ refreshAllAnalyses(); }, 2500);
+/* Expose some functions to global for console use */
+window._debug = {recordPrice,buildCandlesFromHistory,analyzeTF,forceLoadTicks,clearTicks,downloadTicks};
 </script>
 </body>
 </html>
