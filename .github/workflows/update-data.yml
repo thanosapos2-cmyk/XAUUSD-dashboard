@@ -159,7 +159,7 @@ jobs:
               elif series_id == "LNS14000000":
                   result["unemployment"] = record
 
-              elif series_id == "JTS00000000JOL":
+             elif series_id == "JTS000000000000000JOR":  :
                   result["jolts"] = record
 
               elif series_id == "ICSA":
