@@ -50,75 +50,66 @@ jobs:
         run: |
           curl -L -s \
             -A "Mozilla/5.0" \
-            "https://www.dol.gov/newsroom/releases/eta" \
-            -o claims_page.html
+            "https://www.dol.gov/ui/data.pdf" \
+            -o claims.pdf
+
+          pdftotext -layout claims.pdf claims.txt
 
           python - <<'PY'
           import re
           import json
-          from html import unescape
 
           with open(
-              "claims_page.html",
+              "claims.txt",
               "r",
               encoding="utf-8",
               errors="ignore"
           ) as f:
-              page = f.read()
+              text = f.read()
 
-          page = unescape(page)
+          patterns = [
+              r'advance figure for seasonally adjusted initial claims was\s+([\d,]+)',
+              r'seasonally adjusted initial claims was\s+([\d,]+)'
+          ]
 
-          # Convert HTML into readable text
-          text = re.sub(r'<script\b[^>]*>.*?</script>', ' ', page,
-                        flags=re.I | re.S)
-          text = re.sub(r'<style\b[^>]*>.*?</style>', ' ', text,
-                        flags=re.I | re.S)
-          text = re.sub(r'<[^>]+>', ' ', text)
-          text = re.sub(r'\s+', ' ', text).strip()
+          value = None
 
-          # Find the latest Unemployment Insurance Weekly Claims Report.
-          pattern = re.compile(
-              r'Unemployment\s+Insurance\s+Weekly\s+Claims\s+Report'
-              r'.{0,5000}?'
-              r'week\s+ending\s+'
-              r'([A-Z][a-z]+\s+\d{1,2}(?:,\s+|\s+)\d{4})'
-              r'.{0,2500}?'
-              r'advance\s+figure\s+for\s+seasonally\s+adjusted\s+'
-              r'initial\s+claims\s+was\s+([\d,]+)',
-              re.I | re.S
-          )
-
-          match = pattern.search(text)
-
-          if not match:
-              # Second, more flexible fallback
-              pattern2 = re.compile(
-                  r'Unemployment\s+Insurance\s+Weekly\s+Claims\s+Report'
-                  r'.{0,8000}?'
-                  r'initial\s+claims\s+was\s+([\d,]+)',
+          for pattern in patterns:
+              match = re.search(
+                  pattern,
+                  text,
                   re.I | re.S
               )
 
-              match2 = pattern2.search(text)
-
-              if not match2:
-                  raise RuntimeError(
-                      "Could not find the latest Initial Jobless Claims "
-                      "value on the U.S. Department of Labor ETA page."
+              if match:
+                  value = int(
+                      match.group(1).replace(",", "")
                   )
+                  break
 
-              value = int(match2.group(1).replace(",", ""))
-              week_ending = None
+          if value is None:
+              raise RuntimeError(
+                  "Could not extract Initial Jobless Claims "
+                  "from the official DOL Weekly Claims PDF."
+              )
 
-          else:
-              week_ending = match.group(1)
-              value = int(match.group(2).replace(",", ""))
+          date_match = re.search(
+              r'week ending\s+([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
+              text,
+              re.I
+          )
+
+          week_ending = (
+              date_match.group(1)
+              if date_match
+              else None
+          )
 
           claims = {
               "value": value,
               "week_ending": week_ending,
               "source": "U.S. Department of Labor - ETA",
-              "release_url": "https://www.dol.gov/newsroom/releases/eta"
+              "release_url": "https://www.dol.gov/ui/data.pdf"
           }
 
           with open("claims_data.json", "w") as f:
@@ -142,7 +133,11 @@ jobs:
           import html
           from urllib.parse import urljoin
 
-          with open("adp_releases.html", "r", encoding="utf-8") as f:
+          with open(
+              "adp_releases.html",
+              "r",
+              encoding="utf-8"
+          ) as f:
               page = f.read()
 
           page = html.unescape(page)
@@ -178,7 +173,10 @@ jobs:
               }
           )
 
-          with urllib.request.urlopen(request, timeout=30) as response:
+          with urllib.request.urlopen(
+              request,
+              timeout=30
+          ) as response:
               release_html = response.read().decode(
                   "utf-8",
                   errors="ignore"
@@ -242,7 +240,11 @@ jobs:
               re.I
           )
 
-          month = month_match.group(0) if month_match else None
+          month = (
+              month_match.group(0)
+              if month_match
+              else None
+          )
 
           adp = {
               "value": value,
@@ -265,16 +267,28 @@ jobs:
           from datetime import datetime, timezone
           import os
 
-          with open("bls_response.json", "r") as f:
+          with open(
+              "bls_response.json",
+              "r"
+          ) as f:
               data = json.load(f)
 
-          with open("adp_data.json", "r") as f:
+          with open(
+              "adp_data.json",
+              "r"
+          ) as f:
               adp_data = json.load(f)
 
-          with open("claims_data.json", "r") as f:
+          with open(
+              "claims_data.json",
+              "r"
+          ) as f:
               claims_data = json.load(f)
 
-          os.makedirs("data", exist_ok=True)
+          os.makedirs(
+              "data",
+              exist_ok=True
+          )
 
           result = {
               "status": "live",
@@ -285,12 +299,14 @@ jobs:
               "source": {
                   "bls": "https://www.bls.gov/",
                   "adp": "https://mediacenter.adp.com/press-releases?l=50",
-                  "claims": "https://www.dol.gov/newsroom/releases/eta",
+                  "claims": "https://www.dol.gov/ui/data.pdf",
                   "nfib": "https://www.nfib.com/"
               },
 
               "nfp": None,
+
               "unemployment": None,
+
               "jolts": None,
 
               "claims": claims_data,
@@ -304,6 +320,7 @@ jobs:
               },
 
               "ism": None,
+
               "indeed": None,
 
               "cpi": {
@@ -315,12 +332,24 @@ jobs:
               }
           }
 
-          series = data.get("Results", {}).get("series", [])
+          series = data.get(
+              "Results",
+              {}
+          ).get(
+              "series",
+              []
+          )
 
           for item in series:
 
-              series_id = item.get("seriesID")
-              observations = item.get("data", [])
+              series_id = item.get(
+                  "seriesID"
+              )
+
+              observations = item.get(
+                  "data",
+                  []
+              )
 
               if not observations:
                   continue
@@ -334,16 +363,27 @@ jobs:
               }
 
               if series_id == "CES0000000001":
+
                   result["nfp"] = record
 
               elif series_id == "LNS14000000":
+
                   result["unemployment"] = record
 
               elif series_id == "JTS000000000000000JOR":
+
                   result["jolts"] = record
 
-          with open("data/macro.json", "w") as f:
-              json.dump(result, f, indent=2)
+          with open(
+              "data/macro.json",
+              "w"
+          ) as f:
+
+              json.dump(
+                  result,
+                  f,
+                  indent=2
+              )
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
