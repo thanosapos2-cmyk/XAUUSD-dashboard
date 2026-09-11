@@ -17,15 +17,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
-      # ============================================================
-      # BLS DATA
-      # ============================================================
-
       - name: Get BLS data
         shell: bash
         run: |
-
           RESPONSE=$(curl -s \
             -X POST \
             -H "Content-Type: application/json" \
@@ -39,25 +33,18 @@ jobs:
               "startyear": "2026",
               "endyear": "2026"
             }' \
-            https://api.bls.gov/publicAPI/v2/timeseries/data/)
+            "https://api.bls.gov/publicAPI/v2/timeseries/data/")
 
           echo "$RESPONSE" > bls_response.json
-
-
-      # ============================================================
-      # ADP
-      # ============================================================
 
       - name: Get ADP data
         shell: bash
         run: |
-
           curl -L -s \
             "https://adpemploymentreport.com/" \
             -o adp_page.html
 
           python - <<'PY'
-
           import re
           import json
 
@@ -65,7 +52,6 @@ jobs:
               html = f.read()
 
           patterns = [
-              r'Private employers added\s*</[^>]+>\s*([\d,]+)\s*jobs',
               r'Private employers added\s*([\d,]+)\s*jobs',
               r'Change in U\.S\. private employment[^0-9]*([\d,]+)'
           ]
@@ -73,19 +59,10 @@ jobs:
           value = None
 
           for pattern in patterns:
-
-              match = re.search(
-                  pattern,
-                  html,
-                  re.I | re.S
-              )
+              match = re.search(pattern, html, re.I | re.S)
 
               if match:
-
-                  value = int(
-                      match.group(1).replace(",", "")
-                  )
-
+                  value = int(match.group(1).replace(",", ""))
                   break
 
           adp = {
@@ -94,227 +71,102 @@ jobs:
           }
 
           with open("adp_data.json", "w") as f:
-
-              json.dump(
-                  adp,
-                  f,
-                  indent=2
-              )
-
+              json.dump(adp, f, indent=2)
           PY
-
-
-      # ============================================================
-      # BUILD MACRO.JSON
-      # ============================================================
 
       - name: Build macro.json
         shell: python
         run: |
-
           import json
           from datetime import datetime, timezone
 
-
-          # --------------------------------------------------------
-          # Read BLS
-          # --------------------------------------------------------
-
           with open("bls_response.json", "r") as f:
-
               data = json.load(f)
 
-
-          # --------------------------------------------------------
-          # Read ADP
-          # --------------------------------------------------------
-
           with open("adp_data.json", "r") as f:
-
               adp_data = json.load(f)
 
-
-          # --------------------------------------------------------
-          # Base result
-          # --------------------------------------------------------
-
           result = {
-
               "status": "live",
 
               "updated":
                   datetime.now(timezone.utc).isoformat(),
 
               "source": {
-
-                  "bls":
-                      "https://www.bls.gov/",
-
-                  "adp":
-                      "https://adpemploymentreport.com/",
-
-                  "nfib":
-                      "https://www.nfib.com/"
-
+                  "bls": "https://www.bls.gov/",
+                  "adp": "https://adpemploymentreport.com/",
+                  "nfib": "https://www.nfib.com/"
               },
-
 
               "nfp": None,
-
               "unemployment": None,
-
               "jolts": None,
-
               "claims": None,
 
-
-              "adp":
-                  adp_data,
-
+              "adp": adp_data,
 
               "nfib": {
-
                   "employment_index": 101.8,
-
                   "month": "August 2026",
-
-                  "source":
-                      "NFIB Small Business Employment Index"
-
+                  "source": "NFIB Small Business Employment Index"
               },
 
-
               "ism": None,
-
               "indeed": None,
 
-
               "cpi": {
-
                   "mom": 0.36,
-
                   "core_mom": 0.19,
-
                   "yoy": 3.41,
-
                   "core_yoy": 2.32,
-
-                  "source":
-                      "Cleveland Fed"
-
+                  "source": "Cleveland Fed"
               }
-
           }
 
-
-          # --------------------------------------------------------
-          # Extract BLS series
-          # --------------------------------------------------------
-
-          series = (
-              data
-              .get("Results", {})
-              .get("series", [])
-          )
-
+          series = data.get("Results", {}).get("series", [])
 
           for item in series:
 
               series_id = item.get("seriesID")
-
               observations = item.get("data", [])
 
-
               if not observations:
-
                   continue
-
 
               latest = observations[0]
 
-
               record = {
-
-                  "value":
-                      latest.get("value"),
-
-                  "year":
-                      latest.get("year"),
-
-                  "period":
-                      latest.get("period")
-
+                  "value": latest.get("value"),
+                  "year": latest.get("year"),
+                  "period": latest.get("period")
               }
 
-
-              # NFP
-
               if series_id == "CES0000000001":
-
                   result["nfp"] = record
 
-
-              # Unemployment
-
               elif series_id == "LNS14000000":
-
                   result["unemployment"] = record
 
-
-              # JOLTS
-
               elif series_id == "JTS00000000JOL":
-
                   result["jolts"] = record
 
-
-              # Initial Claims
-
               elif series_id == "ICSA":
-
                   result["claims"] = record
 
-
-          # --------------------------------------------------------
-          # Save
-          # --------------------------------------------------------
-
           with open("data/macro.json", "w") as f:
-
-              json.dump(
-                  result,
-                  f,
-                  indent=2
-              )
-
-
-      # ============================================================
-      # COMMIT
-      # ============================================================
+              json.dump(result, f, indent=2)
 
       - name: Commit updated data
         shell: bash
         run: |
-
-          git config user.name \
-            "github-actions[bot]"
-
-          git config user.email \
-            "41898282+github-actions[bot]@users.noreply.github.com"
-
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add data/macro.json
 
-
           if git diff --cached --quiet; then
-
             echo "No data changes."
-
           else
-
-            git commit \
-              -m "Update macroeconomic data"
-
+            git commit -m "Update macroeconomic data"
             git push
-
           fi
