@@ -50,41 +50,75 @@ jobs:
         run: |
           curl -L -s \
             -A "Mozilla/5.0" \
-            "https://www.dol.gov/index.php/newsroom/releases?agency=39&page=0&state=All&topic=All&year=all" \
+            "https://www.dol.gov/newsroom/releases/eta" \
             -o claims_page.html
 
           python - <<'PY'
           import re
           import json
+          from html import unescape
 
-          with open("claims_page.html", "r", encoding="utf-8") as f:
+          with open(
+              "claims_page.html",
+              "r",
+              encoding="utf-8",
+              errors="ignore"
+          ) as f:
               page = f.read()
 
-          # Find the first/latest Unemployment Insurance Weekly Claims Report
+          page = unescape(page)
+
+          # Convert HTML into readable text
+          text = re.sub(r'<script\b[^>]*>.*?</script>', ' ', page,
+                        flags=re.I | re.S)
+          text = re.sub(r'<style\b[^>]*>.*?</style>', ' ', text,
+                        flags=re.I | re.S)
+          text = re.sub(r'<[^>]+>', ' ', text)
+          text = re.sub(r'\s+', ' ', text).strip()
+
+          # Find the latest Unemployment Insurance Weekly Claims Report.
           pattern = re.compile(
               r'Unemployment\s+Insurance\s+Weekly\s+Claims\s+Report'
               r'.{0,5000}?'
-              r'week\s+ending\s+([A-Z][a-z]+\s+\d{1,2},\s+\d{4})'
-              r'.{0,1500}?'
+              r'week\s+ending\s+'
+              r'([A-Z][a-z]+\s+\d{1,2}(?:,\s+|\s+)\d{4})'
+              r'.{0,2500}?'
+              r'advance\s+figure\s+for\s+seasonally\s+adjusted\s+'
               r'initial\s+claims\s+was\s+([\d,]+)',
               re.I | re.S
           )
 
-          match = pattern.search(page)
+          match = pattern.search(text)
 
           if not match:
-              raise RuntimeError(
-                  "Could not find the latest Initial Jobless Claims report."
+              # Second, more flexible fallback
+              pattern2 = re.compile(
+                  r'Unemployment\s+Insurance\s+Weekly\s+Claims\s+Report'
+                  r'.{0,8000}?'
+                  r'initial\s+claims\s+was\s+([\d,]+)',
+                  re.I | re.S
               )
 
-          week_ending = match.group(1)
-          value = int(match.group(2).replace(",", ""))
+              match2 = pattern2.search(text)
+
+              if not match2:
+                  raise RuntimeError(
+                      "Could not find the latest Initial Jobless Claims "
+                      "value on the U.S. Department of Labor ETA page."
+                  )
+
+              value = int(match2.group(1).replace(",", ""))
+              week_ending = None
+
+          else:
+              week_ending = match.group(1)
+              value = int(match.group(2).replace(",", ""))
 
           claims = {
               "value": value,
               "week_ending": week_ending,
               "source": "U.S. Department of Labor - ETA",
-              "release_url": "https://www.dol.gov/index.php/newsroom/releases?agency=39&page=0&state=All&topic=All&year=all"
+              "release_url": "https://www.dol.gov/newsroom/releases/eta"
           }
 
           with open("claims_data.json", "w") as f:
@@ -251,7 +285,7 @@ jobs:
               "source": {
                   "bls": "https://www.bls.gov/",
                   "adp": "https://mediacenter.adp.com/press-releases?l=50",
-                  "claims": "https://www.dol.gov/index.php/newsroom/releases?agency=39&page=0&state=All&topic=All&year=all",
+                  "claims": "https://www.dol.gov/newsroom/releases/eta",
                   "nfib": "https://www.nfib.com/"
               },
 
