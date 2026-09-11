@@ -46,7 +46,7 @@ jobs:
 
           echo "$RESPONSE" > bls_response.json
 
-      - name: Get ADP data
+              - name: Get ADP data
         shell: bash
         run: |
           curl -L -s \
@@ -61,8 +61,9 @@ jobs:
               html = f.read()
 
           patterns = [
-              r'Private employers added\s*([\d,]+)\s*jobs',
-              r'Change in U\.S\. private employment[^0-9]*([\d,]+)'
+              r'Private employers added\s+([\d,]+)\s+jobs',
+              r'private employment.*?([\d,]+)\s+jobs',
+              r'added\s+([\d,]+)\s+jobs'
           ]
 
           value = None
@@ -81,9 +82,7 @@ jobs:
 
           with open("adp_data.json", "w") as f:
               json.dump(adp, f, indent=2)
-          PY
-
-      - name: Build macro.json
+          PY    - name: Build macro.json
         shell: python
         run: |
           import json
