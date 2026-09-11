@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XAUUSD News Predictor</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #0b0f14;
+    color: #e8edf3;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 28px;
+}
+
+.subtitle {
+    color: #8e9aaa;
+    margin-top: 6px;
+    margin-bottom: 25px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 15px;
+}
+
+.card {
+    background: #121821;
+    border: 1px solid #26303d;
+    border-radius: 12px;
+    padding: 18px;
+}
+
+.card h2 {
+    margin-top: 0;
+    font-size: 17px;
+}
+
+.value {
+    font-size: 27px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.label {
+    color: #8995a5;
+    font-size: 13px;
+}
+
+.bullish {
+    color: #35d07f;
+}
+
+.bearish {
+    color: #ff5c68;
+}
+
+.neutral {
+    color: #f1c75b;
+}
+
+.main-signal {
+    margin-top: 20px;
+    background: #151e29;
+    border: 1px solid #344252;
+    border-radius: 14px;
+    padding: 25px;
+    text-align: center;
+}
+
+.signal-title {
+    color: #9ba8b8;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.signal {
+    font-size: 42px;
+    font-weight: bold;
+    margin: 12px 0;
+}
+
+.confidence {
+    font-size: 18px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    padding: 13px 10px;
+    border-bottom: 1px solid #26303d;
+    text-align: left;
+}
+
+th {
+    color: #9ba8b8;
+    font-size: 13px;
+}
+
+.status {
+    margin-top: 20px;
+    color: #8491a1;
+    font-size: 13px;
+}
+
+button {
+    background: #1d8cff;
+    color: white;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 18px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #1675d1;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>⚡ XAUUSD News Predictor</h1>
+    <div class="subtitle">
+        Pre-news macroeconomic prediction engine
+    </div>
+
+    <div class="grid">
+
+        <div class="card">
+            <h2>CPI Predictor</h2>
+            <div class="label">Current model estimate</div>
+            <div id="cpi" class="value neutral">WAITING</div>
+            <div class="label">Awaiting live data</div>
+        </div>
+
+        <div class="card">
+            <h2>NFP Predictor</h2>
+            <div class="label">Current model estimate</div>
+            <div id="nfp" class="value neutral">WAITING</div>
+            <div class="label">Awaiting live data</div>
+        </div>
+
+        <div class="card">
+            <h2>USD Bias</h2>
+            <div id="usdBias" class="value neutral">NEUTRAL</div>
+            <div class="label">Macro directional bias</div>
+        </div>
+
+        <div class="card">
+            <h2>XAUUSD Bias</h2>
+            <div id="goldBias" class="value neutral">WAITING</div>
+            <div class="label">Expected gold direction</div>
+        </div>
+
+    </div>
+
+    <div class="main-signal">
+
+        <div class="signal-title">
+            Current XAUUSD Pre-News Signal
+        </div>
+
+        <div id="signal" class="signal neutral">
+            WAITING FOR DATA
+        </div>
+
+        <div id="confidence" class="confidence">
+            Confidence: --
+        </div>
+
+        <div style="margin-top:20px;">
+            <button onclick="refreshData()">
+                REFRESH DATA
+            </button>
+        </div>
+
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+
+        <h2>Macro Data Dashboard</h2>
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Indicator</th>
+                    <th>Latest</th>
+                    <th>Forecast</th>
+                    <th>Previous</th>
+                    <th>Bias</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <tr>
+                    <td>Cleveland Fed CPI Nowcast</td>
+                    <td id="cleveland">--</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td id="clevelandBias">--</td>
+                </tr>
+
+                <tr>
+                    <td>ADP Employment</td>
+                    <td id="adp">--</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td id="adpBias">--</td>
+                </tr>
+
+                <tr>
+                    <td>Initial Jobless Claims</td>
+                    <td id="claims">--</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td id="claimsBias">--</td>
+                </tr>
+
+                <tr>
+                    <td>JOLTS Job Openings</td>
+                    <td id="jolts">--</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td id="joltsBias">--</td>
+                </tr>
+
+                <tr>
+                    <td>ISM Employment</td>
+                    <td id="ism">--</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td id="ismBias">--</td>
+                </tr>
+
+                <tr>
+                    <td>NFIB Hiring</td>
+                    <td id="nfib">--</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td id="nfibBias">--</td>
+                </tr>
+
+                <tr>
+                    <td>Indeed Job Postings</td>
+                    <td id="indeed">--</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td id="indeedBias">--</td>
+                </tr>
+
+                <tr>
+                    <td>Homebase Employment</td>
+                    <td id="homebase">--</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td id="homebaseBias">--</td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+        <div class="status">
+            System status: <span id="status">Initializing...</span>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+function refreshData() {
+
+    document.getElementById("status").textContent =
+        "Dashboard ready. Live data connectors will be activated next.";
+
+    document.getElementById("cpi").textContent = "READY";
+    document.getElementById("nfp").textContent = "READY";
+
+    document.getElementById("usdBias").textContent = "NEUTRAL";
+    document.getElementById("goldBias").textContent = "WAITING";
+
+    document.getElementById("signal").textContent =
+        "WAITING FOR LIVE DATA";
+
+    document.getElementById("confidence").textContent =
+        "Confidence: --";
+
+}
+
+refreshData();
+
+</script>
+
+</body>
+</html>
