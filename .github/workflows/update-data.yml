@@ -26,6 +26,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+
       - name: Get BLS data
         shell: bash
         run: |
@@ -45,127 +46,93 @@ jobs:
 
           echo "$RESPONSE" > bls_response.json
 
-      - name: Get Initial Jobless Claims
+
+      - name: Get Initial Jobless Claims from FRED
         shell: bash
         run: |
           curl -L -s \
-            -A "Mozilla/5.0" \
-            "https://www.dol.gov/newsroom/releases/eta" \
-            -o claims_page.html
+            "https://fred.stlouisfed.org/graph/fredgraph.csv?id=ICSA" \
+            -o claims.csv
 
           python - <<'PY'
-          import re
+          import csv
           import json
-          import html
+
+          rows = []
 
           with open(
-              "claims_page.html",
+              "claims.csv",
               "r",
               encoding="utf-8",
               errors="ignore"
           ) as f:
-              page = f.read()
 
-          page = html.unescape(page)
+              reader = csv.DictReader(f)
 
-          # Remove scripts
-          page = re.sub(
-              r'<script\b[^>]*>.*?</script>',
-              ' ',
-              page,
-              flags=re.I | re.S
-          )
+              for row in reader:
 
-          # Remove styles
-          page = re.sub(
-              r'<style\b[^>]*>.*?</style>',
-              ' ',
-              page,
-              flags=re.I | re.S
-          )
+                  value = row.get("ICSA")
 
-          # Convert HTML to plain text
-          text = re.sub(
-              r'<[^>]+>',
-              ' ',
-              page
-          )
+                  if not value:
+                      continue
 
-          text = re.sub(
-              r'\s+',
-              ' ',
-              text
-          ).strip()
+                  value = value.strip()
 
-          # Primary pattern
-          pattern = re.compile(
-              r'Unemployment\s+Insurance\s+Weekly\s+Claims\s+Report'
-              r'.{0,5000}?'
-              r'advance\s+figure\s+for\s+seasonally\s+adjusted\s+'
-              r'initial\s+claims\s+was\s+([\d,]+)',
-              re.I | re.S
-          )
+                  if value in ("", "."):
+                      continue
 
-          matches = pattern.findall(text)
+                  try:
+                      number = int(float(value))
+                  except ValueError:
+                      continue
 
-          # Fallback pattern
-          if not matches:
-              fallback = re.compile(
-                  r'advance\s+figure\s+for\s+seasonally\s+adjusted\s+'
-                  r'initial\s+claims\s+was\s+([\d,]+)',
-                  re.I
-              )
+                  rows.append({
+                      "date": row.get("observation_date"),
+                      "value": number
+                  })
 
-              matches = fallback.findall(text)
 
-          if not matches:
+          if not rows:
               raise RuntimeError(
-                  "Could not find Initial Jobless Claims "
-                  "on the official U.S. Department of Labor page."
+                  "Could not find any Initial Jobless Claims "
+                  "data from FRED."
               )
 
-          value = int(
-              matches[0].replace(",", "")
-          )
 
-          # Find week ending date
-          date_pattern = re.compile(
-              r'week\s+ending\s+'
-              r'([A-Z][a-z]+\s+\d{1,2},\s+\d{4})'
-              r'.{0,1000}?'
-              r'advance\s+figure\s+for\s+seasonally\s+adjusted\s+'
-              r'initial\s+claims\s+was',
-              re.I | re.S
-          )
+          latest = rows[-1]
 
-          date_match = date_pattern.search(text)
-
-          week_ending = (
-              date_match.group(1)
-              if date_match
-              else None
-          )
 
           claims = {
-              "value": value,
-              "week_ending": week_ending,
-              "source": "U.S. Department of Labor - ETA",
-              "release_url": "https://www.dol.gov/newsroom/releases/eta"
+              "value": latest["value"],
+              "week_ending": latest["date"],
+              "source": "FRED - Initial Claims (ICSA)",
+              "release_url": (
+                  "https://fred.stlouisfed.org/series/ICSA"
+              )
           }
+
 
           with open(
               "claims_data.json",
               "w"
           ) as f:
+
               json.dump(
                   claims,
                   f,
                   indent=2
               )
 
+
           print("Initial Jobless Claims:")
-          print(json.dumps(claims, indent=2))
+          print(
+              json.dumps(
+                  claims,
+                  indent=2
+              )
+          )
           PY
+
 
       - name: Get ADP data
         shell: bash
@@ -180,39 +147,47 @@ jobs:
           import json
           import html
           from urllib.parse import urljoin
+          import urllib.request
 
           with open(
               "adp_releases.html",
               "r",
-              encoding="utf-8"
+              encoding="utf-8",
+              errors="ignore"
           ) as f:
               page = f.read()
 
+
           page = html.unescape(page)
 
+
           pattern = re.compile(
-              r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>\s*'
-              r'ADP\s+National\s+Employment\s+Report[^<]*',
+              r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>'
+              r'.{0,300}?ADP\s+National\s+Employment\s+Report',
               re.I | re.S
           )
 
+
           links = pattern.findall(page)
 
+
           if not links:
+
               raise RuntimeError(
-                  "Could not find an ADP National Employment Report "
-                  "on the ADP Press Releases page."
+                  "Could not find an ADP National Employment "
+                  "Report on the ADP Press Releases page."
               )
+
 
           release_url = urljoin(
               "https://mediacenter.adp.com/",
               links[0]
           )
 
+
           print("ADP release URL:")
           print(release_url)
 
-          import urllib.request
 
           request = urllib.request.Request(
               release_url,
@@ -221,78 +196,124 @@ jobs:
               }
           )
 
+
           with urllib.request.urlopen(
               request,
               timeout=30
           ) as response:
+
               release_html = response.read().decode(
                   "utf-8",
                   errors="ignore"
               )
 
-          release_html = html.unescape(release_html)
+
+          release_html = html.unescape(
+              release_html
+          )
+
+
+          text = re.sub(
+              r'<script\b[^>]*>.*?</script>',
+              ' ',
+              release_html,
+              flags=re.I | re.S
+          )
+
+
+          text = re.sub(
+              r'<style\b[^>]*>.*?</style>',
+              ' ',
+              text,
+              flags=re.I | re.S
+          )
+
+
+          text = re.sub(
+              r'<[^>]+>',
+              ' ',
+              text
+          )
+
+
+          text = re.sub(
+              r'\s+',
+              ' ',
+              text
+          )
+
 
           patterns = [
-              r'Change in U\.S\. Private Employment:\s*'
-              r'([+-]?\s*[\d,]+)',
 
-              r'Private employers added\s+'
-              r'([\d,]+)\s+jobs',
+              r'Private[-\s]Sector\s+Employment\s+'
+              r'Increased\s+by\s+([+-]?[\d,]+)',
 
-              r'Private-sector employment increased by\s+'
-              r'([\d,]+)\s+jobs'
+              r'Private[-\s]Sector\s+Employment\s+'
+              r'Decreased\s+by\s+([+-]?[\d,]+)',
+
+              r'Private\s+employers\s+added\s+'
+              r'([+-]?[\d,]+)\s+jobs',
+
+              r'Private[-\s]sector\s+employment\s+'
+              r'increased\s+by\s+([+-]?[\d,]+)\s+jobs',
+
+              r'Private[-\s]sector\s+employment\s+'
+              r'decreased\s+by\s+([+-]?[\d,]+)\s+jobs'
           ]
+
 
           value = None
 
+
           for pattern in patterns:
+
               match = re.search(
                   pattern,
-                  release_html,
+                  text,
                   re.I | re.S
               )
 
+
               if match:
-                  value = int(
+
+                  value_text = (
                       match.group(1)
                       .replace(",", "")
                       .replace(" ", "")
                   )
+
+
+                  value = int(
+                      value_text
+                  )
+
+
                   break
 
+
           if value is None:
+
               raise RuntimeError(
-                  "ADP release was found, but the employment value "
-                  "could not be extracted."
+                  "ADP release was found, but the employment "
+                  "value could not be extracted."
               )
 
-          title_match = re.search(
-              r'<title[^>]*>(.*?)</title>',
-              release_html,
-              re.I | re.S
-          )
-
-          title = ""
-
-          if title_match:
-              title = re.sub(
-                  r'<[^>]+>',
-                  '',
-                  title_match.group(1)
-              ).strip()
 
           month_match = re.search(
-              r'(January|February|March|April|May|June|July|August|'
-              r'September|October|November|December)\s+2026',
-              title,
+              r'(January|February|March|April|May|June|'
+              r'July|August|September|October|November|'
+              r'December)\s+2026',
+              text,
               re.I
           )
+
 
           month = (
               month_match.group(0)
               if month_match
               else None
           )
+
 
           adp = {
               "value": value,
@@ -301,19 +322,28 @@ jobs:
               "release_url": release_url
           }
 
+
           with open(
               "adp_data.json",
               "w"
           ) as f:
+
               json.dump(
                   adp,
                   f,
                   indent=2
               )
 
+
           print("ADP data:")
-          print(json.dumps(adp, indent=2))
+          print(
+              json.dumps(
+                  adp,
+                  indent=2
+              )
+          )
           PY
+
 
       - name: Build macro.json
         shell: python
@@ -322,124 +352,209 @@ jobs:
           from datetime import datetime, timezone
           import os
 
+
           with open(
               "bls_response.json",
               "r"
           ) as f:
+
               data = json.load(f)
+
 
           with open(
               "adp_data.json",
               "r"
           ) as f:
+
               adp_data = json.load(f)
+
 
           with open(
               "claims_data.json",
               "r"
           ) as f:
+
               claims_data = json.load(f)
+
 
           os.makedirs(
               "data",
               exist_ok=True
           )
 
+
           result = {
+
               "status": "live",
 
+
               "updated":
-                  datetime.now(timezone.utc).isoformat(),
+                  datetime.now(
+                      timezone.utc
+                  ).isoformat(),
+
 
               "source": {
-                  "bls": "https://www.bls.gov/",
-                  "dol": "https://www.dol.gov/newsroom/releases/eta",
-                  "adp": "https://mediacenter.adp.com/press-releases?l=50",
-                  "nfib": "https://www.nfib.com/"
+
+                  "bls":
+                      "https://www.bls.gov/",
+
+
+                  "fred":
+                      "https://fred.stlouisfed.org/series/ICSA",
+
+
+                  "adp":
+                      "https://mediacenter.adp.com/"
+                      "press-releases?l=50",
+
+
+                  "nfib":
+                      "https://www.nfib.com/"
               },
+
 
               "nfp": None,
 
+
               "unemployment": None,
+
 
               "jolts": None,
 
+
               "claims": claims_data,
+
 
               "adp": adp_data,
 
+
               "nfib": {
+
                   "employment_index": 101.8,
-                  "month": "August 2026",
-                  "source": "NFIB Small Business Employment Index"
+
+
+                  "month":
+                      "August 2026",
+
+
+                  "source":
+                      "NFIB Small Business "
+                      "Employment Index"
               },
+
 
               "ism": None,
 
+
               "indeed": None,
 
+
               "cpi": {
+
                   "mom": 0.36,
+
+
                   "core_mom": 0.19,
+
+
                   "yoy": 3.41,
+
+
                   "core_yoy": 2.32,
-                  "source": "Cleveland Fed"
+
+
+                  "source":
+                      "Cleveland Fed"
               }
           }
 
-          series = data.get(
-              "Results",
-              {}
-          ).get(
-              "series",
-              []
+
+          series = (
+              data
+              .get("Results", {})
+              .get("series", [])
           )
 
+
           for item in series:
+
 
               series_id = item.get(
                   "seriesID"
               )
+
 
               observations = item.get(
                   "data",
                   []
               )
 
+
               if not observations:
                   continue
 
+
               latest = observations[0]
 
+
               record = {
-                  "value": latest.get("value"),
-                  "year": latest.get("year"),
-                  "period": latest.get("period")
+
+                  "value":
+                      latest.get("value"),
+
+
+                  "year":
+                      latest.get("year"),
+
+
+                  "period":
+                      latest.get("period")
               }
 
-              if series_id == "CES0000000001":
+
+              if (
+                  series_id ==
+                  "CES0000000001"
+              ):
 
                   result["nfp"] = record
 
-              elif series_id == "LNS14000000":
 
-                  result["unemployment"] = record
+              elif (
+                  series_id ==
+                  "LNS14000000"
+              ):
 
-              elif series_id == "JTS000000000000000JOR":
+                  result[
+                      "unemployment"
+                  ] = record
 
-                  result["jolts"] = record
+
+              elif (
+                  series_id ==
+                  "JTS000000000000000JOR"
+              ):
+
+                  result[
+                      "jolts"
+                  ] = record
+
 
           with open(
               "data/macro.json",
               "w"
           ) as f:
+
               json.dump(
                   result,
                   f,
                   indent=2
               )
 
+
           print("Final macro.json:")
+
           print(
               json.dumps(
                   result,
@@ -447,25 +562,37 @@ jobs:
               )
           )
 
+
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
 
+
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
+
         with:
           path: "."
 
+
   deploy:
+
     needs: build
+
 
     runs-on: ubuntu-latest
 
+
     environment:
+
       name: github-pages
+
       url: ${{ steps.deployment.outputs.page_url }}
+
 
     steps:
 
       - name: Deploy GitHub Pages
+
         id: deployment
+
         uses: actions/deploy-pages@v4
