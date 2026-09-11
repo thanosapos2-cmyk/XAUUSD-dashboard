@@ -1,0 +1,121 @@
+name: Update Macro Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 */6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get BLS data
+        shell: bash
+        run: |
+
+          RESPONSE=$(curl -s \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d '{
+              "seriesid": [
+                "CES0000000001",
+                "LNS14000000",
+                "JTS000000000000000JOR"
+              ],
+              "startyear": "2026",
+              "endyear": "2026"
+            }' \
+            https://api.bls.gov/publicAPI/v2/timeseries/data/)
+
+          echo "$RESPONSE" > bls_response.json
+
+      - name: Build macro.json
+        shell: python
+        run: |
+
+          import json
+          from datetime import datetime, timezone
+
+          with open("bls_response.json", "r") as f:
+              data = json.load(f)
+
+          result = {
+              "status": "live",
+              "updated": datetime.now(timezone.utc).isoformat(),
+              "source": {
+                  "bls": "https://www.bls.gov/"
+              },
+              "nfp": None,
+              "unemployment": None,
+              "jolts": None,
+              "adp": None,
+              "claims": None,
+              "ism": None,
+              "nfib": None,
+              "indeed": None,
+              "cpi": {
+                  "mom": 0.36,
+                  "core_mom": 0.19,
+                  "yoy": 3.41,
+                  "core_yoy": 2.32,
+                  "source": "Cleveland Fed"
+              }
+          }
+
+          series = data.get("Results", {}).get("series", [])
+
+          for item in series:
+
+              series_id = item.get("seriesID")
+              observations = item.get("data", [])
+
+              if not observations:
+                  continue
+
+              latest = observations[0]
+
+              value = latest.get("value")
+              year = latest.get("year")
+              period = latest.get("period")
+
+              record = {
+                  "value": value,
+                  "year": year,
+                  "period": period
+              }
+
+              if series_id == "CES0000000001":
+                  result["nfp"] = record
+
+              elif series_id == "LNS14000000":
+                  result["unemployment"] = record
+
+              elif series_id == "JTS000000000000000JOR":
+                  result["jolts"] = record
+
+          with open("data/macro.json", "w") as f:
+              json.dump(result, f, indent=2)
+
+      - name: Commit updated data
+        shell: bash
+        run: |
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add data/macro.json
+
+          if git diff --cached --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "Update macroeconomic data"
+            git push
+          fi
