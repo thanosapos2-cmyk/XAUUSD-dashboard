@@ -5,6 +5,10 @@ on:
   schedule:
     - cron: "15 */6 * * *"
 
+concurrency:
+  group: update-macro-data
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
