@@ -28,7 +28,8 @@ jobs:
               "seriesid": [
                 "CES0000000001",
                 "LNS14000000",
-                "JTS000000000000000JOR"
+                "JTS00000000JOL",
+                "ICSA"
               ],
               "startyear": "2026",
               "endyear": "2026"
@@ -50,17 +51,21 @@ jobs:
           result = {
               "status": "live",
               "updated": datetime.now(timezone.utc).isoformat(),
+
               "source": {
                   "bls": "https://www.bls.gov/"
               },
+
               "nfp": None,
               "unemployment": None,
               "jolts": None,
-              "adp": None,
               "claims": None,
+
+              "adp": None,
               "ism": None,
               "nfib": None,
               "indeed": None,
+
               "cpi": {
                   "mom": 0.36,
                   "core_mom": 0.19,
@@ -98,8 +103,11 @@ jobs:
               elif series_id == "LNS14000000":
                   result["unemployment"] = record
 
-              elif series_id == "JTS000000000000000JOR":
+              elif series_id == "JTS00000000JOL":
                   result["jolts"] = record
+
+              elif series_id == "ICSA":
+                  result["claims"] = record
 
           with open("data/macro.json", "w") as f:
               json.dump(result, f, indent=2)
