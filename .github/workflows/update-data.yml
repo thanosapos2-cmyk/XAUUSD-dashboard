@@ -18,6 +18,10 @@ jobs:
         uses: actions/checkout@v4
 
 
+      # ============================================================
+      # BLS DATA
+      # ============================================================
+
       - name: Get BLS data
         shell: bash
         run: |
@@ -40,6 +44,10 @@ jobs:
           echo "$RESPONSE" > bls_response.json
 
 
+      # ============================================================
+      # ADP
+      # ============================================================
+
       - name: Get ADP data
         shell: bash
         run: |
@@ -49,6 +57,7 @@ jobs:
             -o adp_page.html
 
           python - <<'PY'
+
           import re
           import json
 
@@ -56,6 +65,7 @@ jobs:
               html = f.read()
 
           patterns = [
+              r'Private employers added\s*</[^>]+>\s*([\d,]+)\s*jobs',
               r'Private employers added\s*([\d,]+)\s*jobs',
               r'Change in U\.S\. private employment[^0-9]*([\d,]+)'
           ]
@@ -63,10 +73,19 @@ jobs:
           value = None
 
           for pattern in patterns:
-              match = re.search(pattern, html, re.I | re.S)
+
+              match = re.search(
+                  pattern,
+                  html,
+                  re.I | re.S
+              )
 
               if match:
-                  value = int(match.group(1).replace(",", ""))
+
+                  value = int(
+                      match.group(1).replace(",", "")
+                  )
+
                   break
 
           adp = {
@@ -75,9 +94,19 @@ jobs:
           }
 
           with open("adp_data.json", "w") as f:
-              json.dump(adp, f, indent=2)
+
+              json.dump(
+                  adp,
+                  f,
+                  indent=2
+              )
+
           PY
 
+
+      # ============================================================
+      # BUILD MACRO.JSON
+      # ============================================================
 
       - name: Build macro.json
         shell: python
@@ -86,12 +115,28 @@ jobs:
           import json
           from datetime import datetime, timezone
 
+
+          # --------------------------------------------------------
+          # Read BLS
+          # --------------------------------------------------------
+
           with open("bls_response.json", "r") as f:
+
               data = json.load(f)
 
+
+          # --------------------------------------------------------
+          # Read ADP
+          # --------------------------------------------------------
+
           with open("adp_data.json", "r") as f:
+
               adp_data = json.load(f)
 
+
+          # --------------------------------------------------------
+          # Base result
+          # --------------------------------------------------------
 
           result = {
 
@@ -99,7 +144,6 @@ jobs:
 
               "updated":
                   datetime.now(timezone.utc).isoformat(),
-
 
               "source": {
 
@@ -134,7 +178,8 @@ jobs:
 
                   "month": "August 2026",
 
-                  "source": "NFIB Small Business Employment Index"
+                  "source":
+                      "NFIB Small Business Employment Index"
 
               },
 
@@ -154,26 +199,34 @@ jobs:
 
                   "core_yoy": 2.32,
 
-                  "source": "Cleveland Fed"
+                  "source":
+                      "Cleveland Fed"
 
               }
 
           }
 
 
-          series = \
-              data.get("Results", {}).get("series", [])
+          # --------------------------------------------------------
+          # Extract BLS series
+          # --------------------------------------------------------
+
+          series = (
+              data
+              .get("Results", {})
+              .get("series", [])
+          )
 
 
           for item in series:
 
               series_id = item.get("seriesID")
 
-              observations = \
-                  item.get("data", [])
+              observations = item.get("data", [])
 
 
               if not observations:
+
                   continue
 
 
@@ -194,25 +247,37 @@ jobs:
               }
 
 
+              # NFP
+
               if series_id == "CES0000000001":
 
                   result["nfp"] = record
 
+
+              # Unemployment
 
               elif series_id == "LNS14000000":
 
                   result["unemployment"] = record
 
 
+              # JOLTS
+
               elif series_id == "JTS00000000JOL":
 
                   result["jolts"] = record
 
 
+              # Initial Claims
+
               elif series_id == "ICSA":
 
                   result["claims"] = record
 
+
+          # --------------------------------------------------------
+          # Save
+          # --------------------------------------------------------
 
           with open("data/macro.json", "w") as f:
 
@@ -222,6 +287,10 @@ jobs:
                   indent=2
               )
 
+
+      # ============================================================
+      # COMMIT
+      # ============================================================
 
       - name: Commit updated data
         shell: bash
@@ -233,7 +302,9 @@ jobs:
           git config user.email \
             "41898282+github-actions[bot]@users.noreply.github.com"
 
+
           git add data/macro.json
+
 
           if git diff --cached --quiet; then
 
