@@ -48,59 +48,97 @@ jobs:
       - name: Get Initial Jobless Claims
         shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y poppler-utils
-
           curl -L -s \
             -A "Mozilla/5.0" \
-            "https://www.dol.gov/ui/data.pdf" \
-            -o claims.pdf
-
-          pdftotext -layout claims.pdf claims.txt
+            "https://www.dol.gov/newsroom/releases/eta" \
+            -o claims_page.html
 
           python - <<'PY'
           import re
           import json
+          import html
 
           with open(
-              "claims.txt",
+              "claims_page.html",
               "r",
               encoding="utf-8",
               errors="ignore"
           ) as f:
-              text = f.read()
+              page = f.read()
 
-          patterns = [
-              r'advance figure for seasonally adjusted initial claims was\s+([\d,]+)',
-              r'seasonally adjusted initial claims was\s+([\d,]+)'
-          ]
+          page = html.unescape(page)
 
-          value = None
-
-          for pattern in patterns:
-              match = re.search(
-                  pattern,
-                  text,
-                  re.I | re.S
-              )
-
-              if match:
-                  value = int(
-                      match.group(1).replace(",", "")
-                  )
-                  break
-
-          if value is None:
-              raise RuntimeError(
-                  "Could not extract Initial Jobless Claims "
-                  "from the official DOL Weekly Claims PDF."
-              )
-
-          date_match = re.search(
-              r'week ending\s+([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',
-              text,
-              re.I
+          # Remove scripts
+          page = re.sub(
+              r'<script\b[^>]*>.*?</script>',
+              ' ',
+              page,
+              flags=re.I | re.S
           )
+
+          # Remove styles
+          page = re.sub(
+              r'<style\b[^>]*>.*?</style>',
+              ' ',
+              page,
+              flags=re.I | re.S
+          )
+
+          # Convert HTML to plain text
+          text = re.sub(
+              r'<[^>]+>',
+              ' ',
+              page
+          )
+
+          text = re.sub(
+              r'\s+',
+              ' ',
+              text
+          ).strip()
+
+          # Primary pattern
+          pattern = re.compile(
+              r'Unemployment\s+Insurance\s+Weekly\s+Claims\s+Report'
+              r'.{0,5000}?'
+              r'advance\s+figure\s+for\s+seasonally\s+adjusted\s+'
+              r'initial\s+claims\s+was\s+([\d,]+)',
+              re.I | re.S
+          )
+
+          matches = pattern.findall(text)
+
+          # Fallback pattern
+          if not matches:
+              fallback = re.compile(
+                  r'advance\s+figure\s+for\s+seasonally\s+adjusted\s+'
+                  r'initial\s+claims\s+was\s+([\d,]+)',
+                  re.I
+              )
+
+              matches = fallback.findall(text)
+
+          if not matches:
+              raise RuntimeError(
+                  "Could not find Initial Jobless Claims "
+                  "on the official U.S. Department of Labor page."
+              )
+
+          value = int(
+              matches[0].replace(",", "")
+          )
+
+          # Find week ending date
+          date_pattern = re.compile(
+              r'week\s+ending\s+'
+              r'([A-Z][a-z]+\s+\d{1,2},\s+\d{4})'
+              r'.{0,1000}?'
+              r'advance\s+figure\s+for\s+seasonally\s+adjusted\s+'
+              r'initial\s+claims\s+was',
+              re.I | re.S
+          )
+
+          date_match = date_pattern.search(text)
 
           week_ending = (
               date_match.group(1)
@@ -112,11 +150,18 @@ jobs:
               "value": value,
               "week_ending": week_ending,
               "source": "U.S. Department of Labor - ETA",
-              "release_url": "https://www.dol.gov/ui/data.pdf"
+              "release_url": "https://www.dol.gov/newsroom/releases/eta"
           }
 
-          with open("claims_data.json", "w") as f:
-              json.dump(claims, f, indent=2)
+          with open(
+              "claims_data.json",
+              "w"
+          ) as f:
+              json.dump(
+                  claims,
+                  f,
+                  indent=2
+              )
 
           print("Initial Jobless Claims:")
           print(json.dumps(claims, indent=2))
@@ -256,8 +301,15 @@ jobs:
               "release_url": release_url
           }
 
-          with open("adp_data.json", "w") as f:
-              json.dump(adp, f, indent=2)
+          with open(
+              "adp_data.json",
+              "w"
+          ) as f:
+              json.dump(
+                  adp,
+                  f,
+                  indent=2
+              )
 
           print("ADP data:")
           print(json.dumps(adp, indent=2))
@@ -301,8 +353,8 @@ jobs:
 
               "source": {
                   "bls": "https://www.bls.gov/",
+                  "dol": "https://www.dol.gov/newsroom/releases/eta",
                   "adp": "https://mediacenter.adp.com/press-releases?l=50",
-                  "claims": "https://www.dol.gov/ui/data.pdf",
                   "nfib": "https://www.nfib.com/"
               },
 
@@ -381,12 +433,19 @@ jobs:
               "data/macro.json",
               "w"
           ) as f:
-
               json.dump(
                   result,
                   f,
                   indent=2
               )
+
+          print("Final macro.json:")
+          print(
+              json.dumps(
+                  result,
+                  indent=2
+              )
+          )
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
