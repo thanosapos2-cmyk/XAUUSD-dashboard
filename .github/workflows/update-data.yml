@@ -36,8 +36,7 @@ jobs:
               "seriesid": [
                 "CES0000000001",
                 "LNS14000000",
-                "JTS000000000000000JOR",
-                "ICSA"
+                "JTS000000000000000JOR"
               ],
               "startyear": "2026",
               "endyear": "2026"
@@ -45,6 +44,55 @@ jobs:
             "https://api.bls.gov/publicAPI/v2/timeseries/data/")
 
           echo "$RESPONSE" > bls_response.json
+
+      - name: Get Initial Jobless Claims
+        shell: bash
+        run: |
+          curl -L -s \
+            -A "Mozilla/5.0" \
+            "https://www.dol.gov/index.php/newsroom/releases?agency=39&page=0&state=All&topic=All&year=all" \
+            -o claims_page.html
+
+          python - <<'PY'
+          import re
+          import json
+
+          with open("claims_page.html", "r", encoding="utf-8") as f:
+              page = f.read()
+
+          # Find the first/latest Unemployment Insurance Weekly Claims Report
+          pattern = re.compile(
+              r'Unemployment\s+Insurance\s+Weekly\s+Claims\s+Report'
+              r'.{0,5000}?'
+              r'week\s+ending\s+([A-Z][a-z]+\s+\d{1,2},\s+\d{4})'
+              r'.{0,1500}?'
+              r'initial\s+claims\s+was\s+([\d,]+)',
+              re.I | re.S
+          )
+
+          match = pattern.search(page)
+
+          if not match:
+              raise RuntimeError(
+                  "Could not find the latest Initial Jobless Claims report."
+              )
+
+          week_ending = match.group(1)
+          value = int(match.group(2).replace(",", ""))
+
+          claims = {
+              "value": value,
+              "week_ending": week_ending,
+              "source": "U.S. Department of Labor - ETA",
+              "release_url": "https://www.dol.gov/index.php/newsroom/releases?agency=39&page=0&state=All&topic=All&year=all"
+          }
+
+          with open("claims_data.json", "w") as f:
+              json.dump(claims, f, indent=2)
+
+          print("Initial Jobless Claims:")
+          print(json.dumps(claims, indent=2))
+          PY
 
       - name: Get ADP data
         shell: bash
@@ -66,9 +114,9 @@ jobs:
           page = html.unescape(page)
 
           pattern = re.compile(
-              r'href=["\']([^"\']+)["\'][^>]*>\s*'
-              r'ADP National Employment Report[^<]*',
-              re.I
+              r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>\s*'
+              r'ADP\s+National\s+Employment\s+Report[^<]*',
+              re.I | re.S
           )
 
           links = pattern.findall(page)
@@ -145,6 +193,7 @@ jobs:
           )
 
           title = ""
+
           if title_match:
               title = re.sub(
                   r'<[^>]+>',
@@ -188,6 +237,9 @@ jobs:
           with open("adp_data.json", "r") as f:
               adp_data = json.load(f)
 
+          with open("claims_data.json", "r") as f:
+              claims_data = json.load(f)
+
           os.makedirs("data", exist_ok=True)
 
           result = {
@@ -199,13 +251,15 @@ jobs:
               "source": {
                   "bls": "https://www.bls.gov/",
                   "adp": "https://mediacenter.adp.com/press-releases?l=50",
+                  "claims": "https://www.dol.gov/index.php/newsroom/releases?agency=39&page=0&state=All&topic=All&year=all",
                   "nfib": "https://www.nfib.com/"
               },
 
               "nfp": None,
               "unemployment": None,
               "jolts": None,
-              "claims": None,
+
+              "claims": claims_data,
 
               "adp": adp_data,
 
@@ -253,9 +307,6 @@ jobs:
 
               elif series_id == "JTS000000000000000JOR":
                   result["jolts"] = record
-
-              elif series_id == "ICSA":
-                  result["claims"] = record
 
           with open("data/macro.json", "w") as f:
               json.dump(result, f, indent=2)
