@@ -48,6 +48,9 @@ jobs:
       - name: Get Initial Jobless Claims
         shell: bash
         run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+
           curl -L -s \
             -A "Mozilla/5.0" \
             "https://www.dol.gov/ui/data.pdf" \
